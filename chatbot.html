@@ -981,6 +981,11 @@ function handleCopyButtonClick(event) {
   document.body.removeChild(input);
 }
 
+function escapeHtml(text) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
 function showMessage(sender, message, tokens) {
   const chatContainer = document.getElementById("chathistory");
   const typingIndicator = document.getElementById("typing-indicator");
@@ -1000,9 +1005,10 @@ function showMessage(sender, message, tokens) {
     `;
   } else {
     bubble.classList.add("chatgpt-message-bubble");
+    const escapedMessage = escapeHtml(message);
     bubble.innerHTML = `
       <div class="message-header">[${hour}:${minute}] - ${sender}</div>
-      <div class="message-content">${message}</div>
+      <div class="message-content"><pre><code>${escapedMessage}</code></pre></div>
     `;
     if (tokens) {
       const tokenDiv = document.createElement("div");
@@ -1276,8 +1282,9 @@ function showMessageWeb(sender, message, citationLinks = [], tokens = "") {
   } else {
     bubble.classList.add("chatgpt-message-bubble");
     const currentTime = new Date().toLocaleTimeString();
+    const escapedMessage = escapeHtml(message);
     let bubbleContent = `<div class="message-header">[${currentTime}] - ${sender}</div>`;
-    bubbleContent += `<div class="message-content">${message}</div>`;
+    bubbleContent += `<div class="message-content"><pre><code>${escapedMessage}</code></pre></div>`;
     
     if (citationLinks.length > 0) {
       bubbleContent += `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(79,172,254,0.15);">`;
