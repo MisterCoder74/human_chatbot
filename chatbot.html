@@ -196,35 +196,103 @@ details[open] summary::after { transform: rotate(90deg); }
 }
 .chat-input-card { flex-shrink: 0; }
 
+/* ── CHAT MESSAGES (Bubble/Toast style) ── */
 #chathistory {
   flex: 1; overflow-y: auto;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 14px; padding: 14px;
-  display: flex; flex-direction: column; gap: 12px;
+  display: flex; flex-direction: column;
 }
 #chathistory::-webkit-scrollbar { width: 5px; }
 #chathistory::-webkit-scrollbar-thumb { background: rgba(79,172,254,0.25); border-radius: 4px; }
 
-/* ── CHAT MESSAGES (preserved classes for JS) ── */
-.user-message {
-  background: rgba(79,172,254,0.1); border: 1px solid rgba(79,172,254,0.2);
-  border-radius: 10px; padding: 9px 13px; font-size: 0.83rem;
-  color: rgba(255,255,255,0.75); font-style: italic; line-height: 1.5; word-break: break-word;
+/* Container per ogni messaggio - controlla l'allineamento */
+.message-row {
+  display: flex;
+  width: 100%;
+  margin-bottom: 12px;
 }
-.chatgpt-message {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(79,172,254,0.12);
-  border-radius: 12px; padding: 12px 14px; font-size: 0.85rem;
-  line-height: 1.65; color: rgba(255,255,255,0.88); word-break: break-word;
+.message-row.user {
+  justify-content: flex-end;
 }
-.chatgpt-message code {
-  background: rgba(79,172,254,0.12); border-radius: 4px;
-  padding: 1px 5px; font-size: 0.82em; color: #4facfe;
+.message-row.bot {
+  justify-content: flex-start;
 }
-.chatgpt-message pre {
-  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
+
+/* Bubble messaggio utente (Guest) - destra, gradiente blu/azzurro */
+.user-message-bubble {
+  max-width: 75%;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  border-radius: 18px 18px 4px 18px;
+  padding: 14px 18px;
+  font-size: 0.86rem;
+  color: #fff;
+  line-height: 1.6;
+  word-break: break-word;
+  box-shadow: 0 4px 15px rgba(79,172,254,0.35);
+}
+.user-message-bubble .message-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 6px;
+  text-align: right;
+}
+.user-message-bubble .message-content {
+  color: #fff;
+}
+
+/* Bubble messaggio chatbot (VivacityGPT) - sinistra, gradiente scuro/viola */
+.chatgpt-message-bubble {
+  max-width: 75%;
+  background: linear-gradient(135deg, #302b63, #24243e);
+  border: 1px solid rgba(79,172,254,0.25);
+  border-radius: 18px 18px 18px 4px;
+  padding: 14px 18px;
+  font-size: 0.86rem;
+  color: rgba(255,255,255,0.92);
+  line-height: 1.7;
+  word-break: break-word;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+.chatgpt-message-bubble .message-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4facfe;
+  margin-bottom: 6px;
+}
+.chatgpt-message-bubble .message-content {
+  color: rgba(255,255,255,0.92);
+}
+.chatgpt-message-bubble code {
+  background: rgba(79,172,254,0.15); border-radius: 4px;
+  padding: 2px 6px; font-size: 0.82em; color: #4facfe;
+}
+.chatgpt-message-bubble pre {
+  background: rgba(0,0,0,0.4); border: 1px solid rgba(79,172,254,0.15);
   border-radius: 8px; padding: 12px; overflow-x: auto;
   font-size: 0.8rem; line-height: 1.5; margin-top: 8px;
+}
+
+/* Info tokens per messaggi chatbot */
+.token-info {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.5);
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(79,172,254,0.15);
+}
+
+/* Comandi sotto i messaggi */
+.message-commands {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.message-commands .btn {
+  font-size: 0.7rem;
+  padding: 5px 10px;
 }
 
 /* loading */
@@ -518,7 +586,7 @@ const selfAwareness = `
 ],
 "output_format": "Plain text (.txt)",
 "features": [
-"Removes UI words (‘Copy’, ‘Send to TTS’)",
+"Removes UI words (‘Copy’, ‘’)",
 "Generates timestamped filename",
 "Triggers automatic download via Blob URL"
 ]
@@ -759,7 +827,6 @@ function handleSaveButtontClick() {
 function saveChatContentTxt() {
   var chatContent = document.getElementById("chathistory").innerText;
   chatContent = chatContent.replace(/Copy/g, "");
-  chatContent = chatContent.replace(/Send to TTS/g, "");
   var currentTimestamp = new Date();
   var datetime = currentTimestamp.toISOString();
   var filename = "chatsession_v" + datetime.replace(/[-:.]/g, "");
@@ -914,50 +981,48 @@ function handleCopyButtonClick(event) {
   document.body.removeChild(input);
 }
 
-function handleTransferButtonClick(event) {
-  event.preventDefault();
-  const text = this.dataset.message;
-  localStorage.setItem("fromTxtchatbot", text);
-  window.location.href = "https://www.vivacitydesign.net/vdgptscomplete/tts.html";
-}
-
 function showMessage(sender, message, tokens) {
   const chatContainer = document.getElementById("chathistory");
   const typingIndicator = document.getElementById("typing-indicator");
   if (typingIndicator && sender === "VivacityGPT") {
     chatContainer.removeChild(typingIndicator);
   }
-  const messageElement = document.createElement("div");
-  if (sender !== "Guest") {
-    const separator = document.createElement("p");
-    separator.style.fontSize = '.7rem';
-    separator.innerHTML = `${tokens}`;
-    messageElement.innerText = `-[${hour}:${minute}] - ${sender}: ${message}`;
-    messageElement.appendChild(separator);
-  } else {
-    messageElement.innerText = `+[${hour}:${minute}] - ${sender}: ${message}`;
-  }
+
+  const messageRow = document.createElement("div");
+  messageRow.classList.add("message-row", sender === "Guest" ? "user" : "bot");
+
+  const bubble = document.createElement("div");
   if (sender === "Guest") {
-    messageElement.classList.add("user-message-compact");
-  } else if (sender === "VivacityGPT") {
-    messageElement.classList.add("chatgpt-message-compact");
+    bubble.classList.add("user-message-bubble");
+    bubble.innerHTML = `
+      <div class="message-header">[${hour}:${minute}] - ${sender}</div>
+      <div class="message-content">${message}</div>
+    `;
+  } else {
+    bubble.classList.add("chatgpt-message-bubble");
+    bubble.innerHTML = `
+      <div class="message-header">[${hour}:${minute}] - ${sender}</div>
+      <div class="message-content">${message}</div>
+    `;
+    if (tokens) {
+      const tokenDiv = document.createElement("div");
+      tokenDiv.classList.add("token-info");
+      tokenDiv.innerHTML = tokens;
+      bubble.appendChild(tokenDiv);
+    }
     const commands = document.createElement("div");
-    commands.classList.add("flex", "gap-1");
+    commands.classList.add("message-commands");
     const copyButton = document.createElement("button");
     copyButton.classList.add("btn", "btn-secondary");
     copyButton.innerText = "Copy";
     copyButton.dataset.message = message;
     copyButton.addEventListener("click", handleCopyButtonClick);
-    const transferButton = document.createElement("button");
-    transferButton.classList.add("btn", "btn-secondary");
-    transferButton.innerText = "Send to TTS";
-    transferButton.dataset.message = message;
-    transferButton.addEventListener("click", handleTransferButtonClick);
     commands.appendChild(copyButton);
-    commands.appendChild(transferButton);
-    messageElement.appendChild(commands);
+    bubble.appendChild(commands);
   }
-  chatContainer.appendChild(messageElement);
+
+  messageRow.appendChild(bubble);
+  chatContainer.appendChild(messageRow);
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
@@ -1197,62 +1262,52 @@ function showMessageWeb(sender, message, citationLinks = [], tokens = "") {
   if (typingIndicator && sender === "VivacityGPT") {
     chatContainer.removeChild(typingIndicator);
   }
-  const messageElement = document.createElement("div");
-  if (sender !== "Guest") {
-    const responseContainer = document.createElement("div");
-    responseContainer.classList.add("response-container");
-    const formattedMessage = document.createElement("div");
-    formattedMessage.classList.add("formatted-message");
-    formattedMessage.innerHTML = `${message}`;
-    responseContainer.appendChild(formattedMessage);
-    if (citationLinks.length > 0) {
-      const citationSection = document.createElement("div");
-      citationSection.classList.add("citation-section");
-      const citationTitle = document.createElement("strong");
-      citationTitle.textContent = "References:";
-      citationSection.appendChild(document.createElement("br"));
-      citationSection.appendChild(citationTitle);
-      citationSection.appendChild(document.createElement("br"));
-      citationLinks.forEach(link => {
-        const citationLink = document.createElement("a");
-        citationLink.href = link.url;
-        citationLink.textContent = link.title;
-        citationLink.target = "_blank";
-        citationSection.appendChild(citationLink);
-        citationSection.appendChild(document.createElement("br"));
-      });
-      responseContainer.appendChild(citationSection);
-    }
-    const tokenSection = document.createElement("div");
-    tokenSection.classList.add("token-section");
-    tokenSection.innerHTML = tokens;
-    responseContainer.appendChild(tokenSection);
-    messageElement.innerHTML = `-[${new Date().toLocaleTimeString()}] - ${sender}: `;
-    messageElement.appendChild(responseContainer);
-  } else {
-    messageElement.innerText = `+[${new Date().toLocaleTimeString()}] - ${sender}: ${message}`;
-  }
+
+  const messageRow = document.createElement("div");
+  messageRow.classList.add("message-row", sender === "Guest" ? "user" : "bot");
+
+  const bubble = document.createElement("div");
   if (sender === "Guest") {
-    messageElement.classList.add("user-message-compact");
-  } else if (sender === "VivacityGPT") {
-    messageElement.classList.add("chatgpt-message-compact");
+    bubble.classList.add("user-message-bubble");
+    bubble.innerHTML = `
+      <div class="message-header">[${new Date().toLocaleTimeString()}] - ${sender}</div>
+      <div class="message-content">${message}</div>
+    `;
+  } else {
+    bubble.classList.add("chatgpt-message-bubble");
+    const currentTime = new Date().toLocaleTimeString();
+    let bubbleContent = `<div class="message-header">[${currentTime}] - ${sender}</div>`;
+    bubbleContent += `<div class="message-content">${message}</div>`;
+    
+    if (citationLinks.length > 0) {
+      bubbleContent += `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(79,172,254,0.15);">`;
+      bubbleContent += `<strong style="color: #4facfe; font-size: 0.75rem;">References:</strong><br>`;
+      citationLinks.forEach(link => {
+        bubbleContent += `<a href="${link.url}" target="_blank" style="color: #00f2fe; font-size: 0.72rem;">${link.title}</a><br>`;
+      });
+      bubbleContent += `</div>`;
+    }
+    bubble.innerHTML = bubbleContent;
+    
+    if (tokens) {
+      const tokenDiv = document.createElement("div");
+      tokenDiv.classList.add("token-info");
+      tokenDiv.innerHTML = tokens;
+      bubble.appendChild(tokenDiv);
+    }
     const commands = document.createElement("div");
-    commands.classList.add("flex", "gap-1");
+    commands.classList.add("message-commands");
     const copyButton = document.createElement("button");
     copyButton.classList.add("btn", "btn-secondary");
     copyButton.innerText = "Copy";
     copyButton.dataset.message = message;
     copyButton.addEventListener("click", handleCopyButtonClick);
-    const transferButton = document.createElement("button");
-    transferButton.classList.add("btn", "btn-secondary");
-    transferButton.innerText = "Send to TTS";
-    transferButton.dataset.message = message;
-    transferButton.addEventListener("click", handleTransferButtonClick);
     commands.appendChild(copyButton);
-    commands.appendChild(transferButton);
-    messageElement.appendChild(commands);
+    bubble.appendChild(commands);
   }
-  chatContainer.appendChild(messageElement);
+
+  messageRow.appendChild(bubble);
+  chatContainer.appendChild(messageRow);
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
