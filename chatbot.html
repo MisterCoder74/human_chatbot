@@ -981,54 +981,6 @@ function handleCopyButtonClick(event) {
   document.body.removeChild(input);
 }
 
-function escapeHtml(text) {
-  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-  return text.replace(/[&<>"']/g, m => map[m]);
-}
-
-function parseMessageWithCodeBlocks(message) {
-  if (!message) return '';
-
-  const codeFenceRegex = /```(\w*)\n?([\s\S]*?)```/g;
-  const parts = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = codeFenceRegex.exec(message)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({ type: 'text', content: message.slice(lastIndex, match.index) });
-    }
-    parts.push({ type: 'code', content: match[2], language: match[1] });
-    lastIndex = codeFenceRegex.lastIndex;
-  }
-
-  if (lastIndex < message.length) {
-    const remaining = message.slice(lastIndex);
-    if (remaining.trim()) {
-      parts.push({ type: 'text', content: remaining });
-    }
-  }
-
-  if (parts.length === 0) {
-    parts.push({ type: 'text', content: message });
-  }
-
-  let html = '';
-  for (const part of parts) {
-    if (part.type === 'text') {
-      let textContent = part.content
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>');
-      html += textContent;
-    } else if (part.type === 'code') {
-      const escapedCode = escapeHtml(part.content);
-      html += `<pre><code>${escapedCode}</code></pre>`;
-    }
-  }
-
-  return html;
-}
-
 function showMessage(sender, message, tokens) {
   const chatContainer = document.getElementById("chathistory");
   const typingIndicator = document.getElementById("typing-indicator");
@@ -1042,17 +994,24 @@ function showMessage(sender, message, tokens) {
   const bubble = document.createElement("div");
   if (sender === "Guest") {
     bubble.classList.add("user-message-bubble");
-    bubble.innerHTML = `
-      <div class="message-header">[${hour}:${minute}] - ${sender}</div>
-      <div class="message-content">${message}</div>
-    `;
+    const headerDiv = document.createElement("div");
+    headerDiv.classList.add("message-header");
+    headerDiv.innerText = `[${hour}:${minute}] - ${sender}`;
+    const contentDiv = document.createElement("div");
+    contentDiv.classList.add("message-content");
+    contentDiv.innerText = message;
+    bubble.appendChild(headerDiv);
+    bubble.appendChild(contentDiv);
   } else {
     bubble.classList.add("chatgpt-message-bubble");
-    const parsedMessage = parseMessageWithCodeBlocks(message);
-    bubble.innerHTML = `
-      <div class="message-header">[${hour}:${minute}] - ${sender}</div>
-      <div class="message-content">${parsedMessage}</div>
-    `;
+    const headerDiv = document.createElement("div");
+    headerDiv.classList.add("message-header");
+    headerDiv.innerText = `[${hour}:${minute}] - ${sender}`;
+    const contentDiv = document.createElement("div");
+    contentDiv.classList.add("message-content");
+    contentDiv.innerText = message;
+    bubble.appendChild(headerDiv);
+    bubble.appendChild(contentDiv);
     if (tokens) {
       const tokenDiv = document.createElement("div");
       tokenDiv.classList.add("token-info");
@@ -1318,26 +1277,51 @@ function showMessageWeb(sender, message, citationLinks = [], tokens = "") {
   const bubble = document.createElement("div");
   if (sender === "Guest") {
     bubble.classList.add("user-message-bubble");
-    bubble.innerHTML = `
-      <div class="message-header">[${new Date().toLocaleTimeString()}] - ${sender}</div>
-      <div class="message-content">${message}</div>
-    `;
+    const headerDiv = document.createElement("div");
+    headerDiv.classList.add("message-header");
+    headerDiv.innerText = `[${new Date().toLocaleTimeString()}] - ${sender}`;
+    const contentDiv = document.createElement("div");
+    contentDiv.classList.add("message-content");
+    contentDiv.innerText = message;
+    bubble.appendChild(headerDiv);
+    bubble.appendChild(contentDiv);
   } else {
     bubble.classList.add("chatgpt-message-bubble");
     const currentTime = new Date().toLocaleTimeString();
-    const parsedMessage = parseMessageWithCodeBlocks(message);
-    let bubbleContent = `<div class="message-header">[${currentTime}] - ${sender}</div>`;
-    bubbleContent += `<div class="message-content">${parsedMessage}</div>`;
+
+    const headerDiv = document.createElement("div");
+    headerDiv.classList.add("message-header");
+    headerDiv.innerText = `[${currentTime}] - ${sender}`;
+    bubble.appendChild(headerDiv);
+
+    const contentDiv = document.createElement("div");
+    contentDiv.classList.add("message-content");
+    contentDiv.innerText = message;
+    bubble.appendChild(contentDiv);
 
     if (citationLinks.length > 0) {
-      bubbleContent += `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(79,172,254,0.15);">`;
-      bubbleContent += `<strong style="color: #4facfe; font-size: 0.75rem;">References:</strong><br>`;
+      const refsDiv = document.createElement("div");
+      refsDiv.style.marginTop = "12px";
+      refsDiv.style.paddingTop = "12px";
+      refsDiv.style.borderTop = "1px solid rgba(79,172,254,0.15)";
+      const refsStrong = document.createElement("strong");
+      refsStrong.style.color = "#4facfe";
+      refsStrong.style.fontSize = "0.75rem";
+      refsStrong.innerText = "References:";
+      refsDiv.appendChild(refsStrong);
+      refsDiv.appendChild(document.createElement("br"));
       citationLinks.forEach(link => {
-        bubbleContent += `<a href="${link.url}" target="_blank" style="color: #00f2fe; font-size: 0.72rem;">${link.title}</a><br>`;
+        const linkA = document.createElement("a");
+        linkA.href = link.url;
+        linkA.target = "_blank";
+        linkA.style.color = "#00f2fe";
+        linkA.style.fontSize = "0.72rem";
+        linkA.innerText = link.title;
+        refsDiv.appendChild(linkA);
+        refsDiv.appendChild(document.createElement("br"));
       });
-      bubbleContent += `</div>`;
+      bubble.appendChild(refsDiv);
     }
-    bubble.innerHTML = bubbleContent;
 
     if (tokens) {
       const tokenDiv = document.createElement("div");
