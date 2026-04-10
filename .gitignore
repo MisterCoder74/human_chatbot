@@ -23,6 +23,11 @@ test_phase4.html
 *.temp
 *.log
 
+# Data files
+memoria_salvata.json
+memoria_temporanea.json
+upload/
+
 # Backup files
 *.bak
 *.backup

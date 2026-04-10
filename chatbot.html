@@ -435,6 +435,7 @@ details[open] summary::after { transform: rotate(90deg); }
         <button class="btn btn-sm" id="showChatButton">📂 Show Memory</button>
         <button class="btn btn-sm" id="apikeyBtn">🔑 API Key</button>
         <button class="btn btn-sm" onclick="clearLongMemory()">🗑 Clear Long Memory</button>
+        <button class="btn btn-sm" onclick="exportAllMemory()">📤 Esporta Memoria</button>
         <small id="memoryStatus"></small>
         <button class="btn btn-sm" id="savetxt">💾 Export Chat</button>
         <button class="btn btn-sm"
@@ -1969,6 +1970,41 @@ function clearLongMemory() {
       `Memoria cancellata. (max ${MEMORY_CONFIG.MAX_MEMORIES}, ${MEMORY_CONFIG.MAX_DAYS} giorni retention)`;
     console.log("Long memory cleared by user.");
   }
+}
+
+function exportAllMemory() {
+  const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
+  if (memoria.length === 0) {
+    alert("Nessun ricordo presente nella memoria a lungo termine.");
+    return;
+  }
+
+  let content = "";
+  memoria.forEach(item => {
+    let text = item.testo || "";
+    const formattedText = text.replace(/^Utente:/m, "UTENTE:").replace(/^Bot:/m, "BOT:");
+    const data = item.data ? new Date(item.data).toLocaleString('it-IT') : "N/A";
+    content += `[${data}] ${formattedText}\n---\n`;
+  });
+
+  const now = new Date();
+  const YYYY = now.getFullYear();
+  const MM = String(now.getMonth() + 1).padStart(2, '0');
+  const DD = String(now.getDate()).padStart(2, '0');
+  const HH = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const filename = `memoria_completa_${YYYY}${MM}${DD}_${HH}${mm}${ss}.txt`;
+
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const downloadLink = document.createElement("a");
+  downloadLink.href = url;
+  downloadLink.download = filename;
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+  URL.revokeObjectURL(url);
 }
         
 // Prune old memories using configurable parameters (Phase 4 - 4.2)
