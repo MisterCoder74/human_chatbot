@@ -961,17 +961,178 @@ function showMessage(sender, message, tokens) {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-async function getChatGPTResponse(userInput, chatMemory = []) {
+// ============================================================
+// CORE FUNCTION - openAIChat
+// ============================================================
+async function openAIChat(userMessage, options, chatMemory) {
   const apikey = localStorage.getItem("openaikey");
   document.getElementById("apikey").value = apikey;
-  if (apikey === "") { alert("No OpenAI API Key found."); return; }
-  showSpinner("Generating response...");
-const contestoMemoria = await searchLongMemory(userInput);
-  if (contestoMemoria && chatMemory.length > 0) {
-    chatMemory[0].content = chatMemory[0].content + "\n\n" + contestoMemoria;
-          console.log(contestoMemoria);
-  }        
-        
+  if (apikey === "") { alert("No OpenAI API Key found."); return chatMemory; }
+
+  showSpinner(options.spinnerMessage || "Processing...");
+
+  // Gestione memoria a lungo termine
+  if (options.searchMemory !== false && options.searchMemory !== undefined) {
+    const contestoMemoria = await searchLongMemory(
+      typeof userMessage === 'string' ? userMessage : (userMessage.content?.[0]?.text || "")
+    );
+    if (contestoMemoria && chatMemory.length > 0) {
+      chatMemory[0].content = chatMemory[0].content + "\n\n" + contestoMemoria;
+      console.log(contestoMemoria);
+    }
+  }
+
+  try {
+    const requestBody = {
+      model: options.model,
+      messages: [...chatMemory, userMessage],
+      max_tokens: options.maxTokens || 15999
+    };
+
+    // Aggiungi web_search_options per ricerca web
+    if (options.webSearch) {
+      requestBody.web_search_options = { search_context_size: "medium" };
+    }
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) throw new Error("Error while requesting to the API");
+    const data = await response.json();
+    if (!data.choices || !data.choices.length || !data.choices[0].message || !data.choices[0].message.content)
+      throw new Error("Invalid API response");
+
+    const rawResponse = data.choices[0].message.content.trim();
+    
+    // Response cleaning
+    let cleanResponse = rawResponse
+      .replace(/(```html|```css|```javascript|```json|```js|```php|```python|```vb|```vbnet|```cpp|```java|```csharp)(.*?)/gs, "$2")
+      .replace(/```/g, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
+
+    // Calcolo costi token
+    let tokenInfo = "";
+    if (data.usage?.completion_tokens) {
+      const { prompt_tokens, completion_tokens, total_tokens } = data.usage;
+      const promptPrice = (options.tokenPrices?.prompt || 0) / 1000000;
+      const responsePrice = (options.tokenPrices?.response || 0) / 1000000;
+      const promptCost = promptPrice * prompt_tokens;
+      const responseCost = responsePrice * completion_tokens;
+      const totalExpense = promptCost + responseCost;
+      
+      if (options.webSearch) {
+        tokenInfo = `Your request used ${prompt_tokens} tokens and cost ${promptCost.toFixed(6)}USD<br>` +
+          `This response used ${completion_tokens} tokens and cost ${responseCost.toFixed(6)}USD<br>` +
+          `Total Tokens: ${total_tokens}. This interaction cost you: ${totalExpense.toFixed(6)}USD.`;
+      } else {
+        tokenInfo = `<hr>Your request used ${prompt_tokens} tokens and costed ${promptCost.toFixed(6)}USD<br>` +
+          `This response used ${completion_tokens} tokens and costed ${responseCost.toFixed(6)}USD<br>` +
+          `Total Tokens: ${total_tokens}. This interaction costed you: ${totalExpense.toFixed(6)}USD.`;
+      }
+    } else {
+      tokenInfo = "Unable to track the number of used tokens.";
+    }
+
+    // Gestione citazioni per web search
+    let citationLinks = [];
+    if (options.webSearch) {
+      const citations = data.choices[0].message.annotations || [];
+      if (citations.length > 0) {
+        citations.forEach(annotation => {
+          if (annotation.type === 'url_citation' && annotation.url_citation) {
+            const { title, url } = annotation.url_citation;
+            citationLinks.push({ title, url });
+          }
+        });
+      }
+      // Clean response text for web
+      cleanResponse = cleanResponseText(cleanResponse, citations);
+    }
+
+    // Aggiornamento chatMemory
+    const userContent = typeof userMessage === 'string' ? userMessage : 
+      (userMessage.content?.[0]?.text || JSON.stringify(userMessage.content));
+    chatMemory.push({ role: "user", content: userContent });
+    chatMemory.push({ role: "assistant", content: cleanResponse });
+
+    // Salva in long memory (non per web search)
+    if (!options.webSearch) {
+      await saveToLongMemory(userContent, cleanResponse);
+    }
+
+    // Display message in base al tipo
+    if (options.webSearch) {
+      showMessageWeb("VivacityGPT", cleanResponse, citationLinks, tokenInfo);
+    } else if (options.showPreview && options.imageUrl) {
+      // Image preview display
+      const wrapperFlex = document.createElement("div");
+      wrapperFlex.style.width = "100%";
+      wrapperFlex.style.display = "flex";
+      wrapperFlex.style.alignItems = "flex-start";
+      wrapperFlex.style.gap = "10px";
+      wrapperFlex.style.marginBottom = "10px";
+      
+      const imageFrame = document.createElement("div");
+      imageFrame.style.width = "20%";
+      imageFrame.style.height = "auto";
+      imageFrame.style.textAlign = "center";
+      imageFrame.style.fontSize = ".9rem";
+      imageFrame.style.display = "flex";
+      imageFrame.style.flexDirection = "column";
+      imageFrame.style.justifyContent = "center";
+      imageFrame.style.alignItems = "center";
+      imageFrame.style.boxShadow = "0 4px 8px black";
+      imageFrame.style.borderRadius = "8px";
+      imageFrame.innerHTML = "Uploaded Image";
+      
+      const imagePreview = document.createElement("img");
+      imagePreview.src = options.imageUrl;
+      imagePreview.style.maxWidth = "95%";
+      imagePreview.style.marginTop = "10px";
+      imagePreview.style.marginBottom = "8px";
+      imagePreview.style.borderRadius = "8px";
+      imagePreview.style.height = "auto";
+      imagePreview.alt = "Uploaded Image preview";
+      imageFrame.appendChild(imagePreview);
+      wrapperFlex.appendChild(imageFrame);
+      
+      const chatContainer = document.getElementById("chathistory");
+      chatContainer.appendChild(wrapperFlex);
+      
+      showMessage(
+        "VivacityGPT",
+        "Here is a summary of the analyzed image: \n\n" + cleanResponse + "\n\n Now you can ask me questions about the content.",
+        tokenInfo
+      );
+      
+      const chatMessages = chatContainer.querySelectorAll("#chathistory > div");
+      const lastMessage = chatMessages[chatMessages.length - 1];
+      wrapperFlex.appendChild(lastMessage);
+    } else {
+      showMessage("VivacityGPT", cleanResponse, tokenInfo);
+    }
+
+    return chatMemory;
+
+  } catch (error) {
+    console.error(error);
+    alert("An error occurred during the request. Check your OpenAI account or retry later.");
+    return chatMemory;
+  } finally {
+    hideSpinner();
+  }
+}
+
+// ============================================================
+// WRAPPER FUNCTIONS
+// ============================================================
+
+async function getChatGPTResponse(userInput, chatMemory = []) {
+  // Costruzione userMessage con supporto currentFileId (document analyzer)
   const userMessage = currentFileId
     ? {
         role: "user",
@@ -982,116 +1143,35 @@ const contestoMemoria = await searchLongMemory(userInput);
       }
     : { role: "user", content: userInput };
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
-      body: JSON.stringify({
-       
-        model: "gpt-4.1-mini",
-        messages: [...chatMemory, userMessage],
-        max_tokens: 15999
-      })
-    });
-    if (!response.ok) throw new Error("Error while requesting to the API");
-    const data = await response.json();
-    if (!data.choices || !data.choices.length || !data.choices[0].message || !data.choices[0].message.content)
-      throw new Error("Invalid API response");
-    const chatGPTResponse = data.choices[0].message.content.trim();
-    var cleanResponse = chatGPTResponse
-      .replace(/(```html|```css|```javascript|```json|```js|```php|```python|```vb|```vbnet|```cpp|```java|```csharp)(.*?)/gs, "$2")
-      .replace(/```/g, "")
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
-    const tokenCount = document.createElement("p");
-    if (data.usage.completion_tokens) {
-      const requestTokens = data.usage.prompt_tokens;
-      const responseTokens = data.usage.completion_tokens;
-      const totalTokens = data.usage.total_tokens;
-      const pricepertokenprompt = 1.25 / 1000000;
-      const pricepertokenresponse = 10 / 1000000;
-      const priceperrequest = pricepertokenprompt * requestTokens;
-      const priceperresponse = pricepertokenresponse * responseTokens;
-      const totalExpense = priceperrequest + priceperresponse;
-      tokenCount.innerHTML = `<hr>Your request used ${requestTokens} tokens and costed ${priceperrequest.toFixed(6)}USD<br>This response used ${responseTokens} tokens and costed ${priceperresponse.toFixed(6)}USD<br>Total Tokens: ${totalTokens}. This interaction costed you: ${totalExpense.toFixed(6)}USD.`;
-    } else {
-      tokenCount.innerHTML = "Unable to track the number of used tokens.";
-    }
-    showMessage("VivacityGPT", cleanResponse, tokenCount.innerHTML);
-chatMemory.push({ role: "user", content: userInput });
-chatMemory.push({ role: "assistant", content: cleanResponse });
-await saveToLongMemory(userInput, cleanResponse); // ← aggiungi questa riga
-return chatMemory;
-  } catch (error) {
-    console.error(error);
-    alert("An error occurred during the request. Check your OpenAI account or retry later.");
-  } finally {
-    hideSpinner();
-  }
+  const options = {
+    model: 'gpt-4.1-mini',
+    searchMemory: true,
+    maxTokens: 15999,
+    tokenPrices: { prompt: 1.25, response: 10 },
+    webSearch: false,
+    imageUrl: null,
+    showPreview: false,
+    spinnerMessage: "Generating response..."
+  };
+
+  return await openAIChat(userMessage, options, chatMemory);
 }
 
 async function getChatGPTResponseWeb(userInput, chatMemory = []) {
-  const apikey = localStorage.getItem("openaikey");
-  document.getElementById("apikey").value = apikey;
-  if (apikey === "") { alert("No OpenAI API Key found."); return; }
-  showSpinner("Searching the web...");
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
-      body: JSON.stringify({
-              model: "gpt-5-search-api",
-        web_search_options: { search_context_size: "medium" },
-        messages: [...chatMemory, { role: "user", content: userInput }]
-      })
-    });
-    if (!response.ok) throw new Error("Error while requesting to the API");
-    const data = await response.json();
-    if (!data.choices || !data.choices.length || !data.choices[0].message || !data.choices[0].message.content)
-      throw new Error("Invalid API response");
-    const citations = data.choices[0].message.annotations || [];
-    const chatGPTResponse = data.choices[0].message.content.trim();
-    let cleanResponse = cleanResponseText(chatGPTResponse, citations);
-    cleanResponse = cleanResponse
-      .replace(/(```html|```css|```javascript|```php|```python|```vb|```vb.net|cpp|java|csharp)(.*?)/gs, "$2")
-      .replace(/```/g, "")
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
-    const citationLinks = [];
-    if (citations.length > 0) {
-      citations.forEach(annotation => {
-        if (annotation.type === 'url_citation' && annotation.url_citation) {
-          const { title, url } = annotation.url_citation;
-          citationLinks.push({ title, url });
-        }
-      });
-    }
-    let tokenInfo = "";
-    if (data.usage.completion_tokens) {
-      const requestTokens = data.usage.prompt_tokens;
-      const responseTokens = data.usage.completion_tokens;
-      const totalTokens = data.usage.total_tokens;
-      const pricepertokenprompt = 0.15 / 1000000;
-      const pricepertokenresponse = 0.60 / 1000000;
-      const priceperrequest = pricepertokenprompt * requestTokens;
-      const priceperresponse = pricepertokenresponse * responseTokens;
-      const totalExpense = priceperrequest + priceperresponse;
-      tokenInfo = `Your request used ${requestTokens} tokens and cost ${priceperrequest.toFixed(6)}USD<br>` +
-        `This response used ${responseTokens} tokens and cost ${priceperresponse.toFixed(6)}USD<br>` +
-        `Total Tokens: ${totalTokens}. This interaction cost you: ${totalExpense.toFixed(6)}USD.`;
-    } else {
-      tokenInfo = "Unable to track the number of used tokens.";
-    }
-    showMessageWeb("VivacityGPT", cleanResponse, citationLinks, tokenInfo);
-    chatMemory.push({ role: "user", content: userInput });
-    chatMemory.push({ role: "assistant", content: cleanResponse });
-    return chatMemory;
-  } catch (error) {
-    console.error(error);
-    alert("An error occurred during the request. Check your OpenAI account or retry later.");
-  } finally {
-    hideSpinner();
-  }
+  const userMessage = { role: "user", content: userInput };
+  
+  const options = {
+    model: 'gpt-5-search-api',
+    searchMemory: undefined, // disabilitato per web search
+    maxTokens: 15999,
+    tokenPrices: { prompt: 0.15, response: 0.6 },
+    webSearch: true,
+    imageUrl: null,
+    showPreview: false,
+    spinnerMessage: "Searching the web..."
+  };
+
+  return await openAIChat(userMessage, options, chatMemory);
 }
 
 function cleanResponseText(response, citations) {
@@ -1469,100 +1549,36 @@ async function submitImage(imgUrl) {
   return await getChatGPTResponseIMG("https://testsite.vivacitydesign.net/TESTVARI/vd-ai-os/os-website-04/" + imgUrl, chatMemory);
 }
 
-async function getChatGPTResponseIMG(fileUrl, chatMemory) {
+async function getChatGPTResponseIMG(fileUrl, chatMemory = []) {
   console.log(fileUrl);
-  const apikey = localStorage.getItem("openaikey");
-  document.getElementById("apikey").value = apikey;
-  if (apikey === "") { alert("No OpenAI API Key found."); return; }
-  showSpinner("Analyzing image...");
-  try {
-    response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
-      body: JSON.stringify({
-        model: "gpt-4.1-nano",
-        messages: [
-          ...chatMemory.map((item) => ({ ...item })),
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "What's in this image? Provide a detailed description of the image content. If there is any code inside in any programming language you know, write it all down (no excerpts) in the answer and also provide a brief description of what the code does. If there are any technical elements used in engineering, try retrieve the type and the names of all elements like instrumentation, lines, piping elements, and equipments, providing a list to the user. If there are people, try to describe their gender, ethnicity, general look and overall situation. In all other cases just describe the image content in details."
-              },
-              {
-                type: "image_url",
-                image_url: { url: fileUrl }
-              }
-            ]
-          }
-        ]
-      })
-    });
-    if (!response.ok) throw new Error("Error while requesting to the API.");
-    const data = await response.json();
-    if (!data.choices || !data.choices.length || !data.choices[0].message || !data.choices[0].message.content)
-      throw new Error("Invalid API response.");
-    var chatGPTResponse = data.choices[0].message.content;
-    chatGPTResponse = chatGPTResponse
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
-    const tokenCount = document.createElement("p");
-    const pricepertoken = 0.40 / 1000000;
-    if (data.usage.completion_tokens) {
-      const responseTokens = data.usage.completion_tokens;
-      const priceperresponse = pricepertoken * responseTokens;
-      tokenCount.innerHTML = `<br><hr><br>This response used ${responseTokens} tokens and costed you: ${priceperresponse.toFixed(6)}USD.<br>Image analysis cost depends on the image size.`;
-    } else {
-      tokenCount.innerHTML = "Unable to retrieve the number of used tokens.";
-    }
-    const wrapperFlex = document.createElement("div");
-    wrapperFlex.style.width = "100%";
-    wrapperFlex.style.display = "flex";
-    wrapperFlex.style.alignItems = "flex-start";
-    wrapperFlex.style.gap = "10px";
-    wrapperFlex.style.marginBottom = "10px";
-    const imageFrame = document.createElement("div");
-    imageFrame.style.width = "20%";
-    imageFrame.style.height = "auto";
-    imageFrame.style.textAlign = "center";
-    imageFrame.style.fontSize = ".9rem";
-    imageFrame.style.display = "flex";
-    imageFrame.style.flexDirection = "column";
-    imageFrame.style.justifyContent = "center";
-    imageFrame.style.alignItems = "center";
-    imageFrame.style.boxShadow = "0 4px 8px black";
-    imageFrame.style.borderRadius = "8px";
-    imageFrame.innerHTML = "Uploaded Image";
-    const imagePreview = document.createElement("img");
-    imagePreview.src = fileUrl;
-    imagePreview.style.maxWidth = "95%";
-    imagePreview.style.marginTop = "10px";
-    imagePreview.style.marginBottom = "8px";
-    imagePreview.style.borderRadius = "8px";
-    imagePreview.style.height = "auto";
-    imagePreview.alt = "Uploaded Image preview";
-    imageFrame.appendChild(imagePreview);
-    wrapperFlex.appendChild(imageFrame);
-    const chatContainer = document.getElementById("chathistory");
-    chatContainer.appendChild(wrapperFlex);
-    showMessage(
-      "VivacityGPT",
-      "Here is a summary of the analyzed image: \n\n" + chatGPTResponse + "\n\n Now you can ask me questions about the content.",
-      tokenCount.innerHTML
-    );
-    const chatMessages = chatContainer.querySelectorAll("#chathistory > div");
-    const lastMessage = chatMessages[chatMessages.length - 1];
-    wrapperFlex.appendChild(lastMessage);
-    chatMemory.push({ role: "user", content: fileUrl });
-    chatMemory.push({ role: "assistant", content: chatGPTResponse });
-    return chatMemory;
-  } catch (error) {
-    console.error(error);
-    alert("An error occurred during the request. Check your OpenAI account or try later.");
-  } finally {
-    hideSpinner();
-  }
+  
+  // Costruzione userMessage con supporto immagini (vision)
+  const userMessage = {
+    role: "user",
+    content: [
+      {
+        type: "text",
+        text: "What's in this image? Provide a detailed description of the image content. If there is any code inside in any programming language you know, write it all down (no excerpts) in the answer and also provide a brief description of what the code does. If there are any technical elements used in engineering, try retrieve the type and the names of all elements like instrumentation, lines, piping elements, and equipments, providing a list to the user. If there are people, try to describe their gender, ethnicity, general look and overall situation. In all other cases just describe the image content in details."
+      },
+      {
+        type: "image_url",
+        image_url: { url: fileUrl }
+      }
+    ]
+  };
+
+  const options = {
+    model: 'gpt-4.1-nano',
+    searchMemory: undefined, // disabilitato per immagini
+    maxTokens: 4096,
+    tokenPrices: { prompt: 0, response: 0.4 }, // solo response per immagini
+    webSearch: false,
+    imageUrl: fileUrl,
+    showPreview: true,
+    spinnerMessage: "Analyzing image..."
+  };
+
+  return await openAIChat(userMessage, options, chatMemory);
 }
 
 function updateStructure() {
