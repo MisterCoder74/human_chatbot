@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Master Chatbot — VivacityGPT</title>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  color: #fff;
+  overflow: hidden;
+}
+
+/* ── PAGE SHELL ── */
+.page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 16px;
+  gap: 14px;
+}
+
+/* ── HEADER ── */
+.page-header { display: flex; align-items: flex-start; gap: 14px; flex-shrink: 0; }
+.icon-badge {
+  font-size: 2.2rem; line-height: 1;
+  filter: drop-shadow(0 2px 8px rgba(79,172,254,0.5));
+}
+.page-header-text h1 {
+  font-size: 1.4rem; font-weight: 800;
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.page-header-text p {
+  font-size: 0.72rem; color: rgba(255,255,255,0.35);
+  margin-top: 3px; font-style: italic; line-height: 1.5;
+}
+.page-header-text code {
+  font-size: 0.68rem; background: rgba(79,172,254,0.12);
+  border: 1px solid rgba(79,172,254,0.2); border-radius: 4px;
+  padding: 1px 5px; color: #4facfe; font-style: normal;
+}
+
+hr.divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+
+/* ── MAIN LAYOUT ── */
+.main-cols {
+  display: flex; gap: 16px; flex: 1; min-height: 0;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 260px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(79,172,254,0.2); border-radius: 4px; }
+
+/* ── CARDS ── */
+.card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 14px; padding: 14px 16px;
+  backdrop-filter: blur(6px);
+}
+.card-sm {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 10px 14px;
+  backdrop-filter: blur(4px);
+}
+
+/* ── FIELD LABEL ── */
+.field-label {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: rgba(79,172,254,0.8);
+  display: block; margin-bottom: 6px;
+}
+
+/* ── INPUT / TEXTAREA ── */
+input[type="password"], input[type="text"] {
+  width: 100%; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 9px;
+  color: #fff; padding: 8px 12px; font-size: 0.82rem;
+  outline: none; transition: border-color 0.2s; font-family: inherit;
+}
+input[type="password"] { color: rgba(255,255,255,0.35); font-style: italic; cursor: default; }
+input[type="text"]:focus, textarea:focus { border-color: rgba(79,172,254,0.5); }
+input::placeholder { color: rgba(255,255,255,0.22); }
+
+textarea {
+  width: 100%; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 9px;
+  color: #fff; padding: 10px 12px; font-size: 0.86rem;
+  font-family: inherit; resize: none; outline: none;
+  transition: border-color 0.2s; line-height: 1.55;
+}
+textarea::placeholder { color: rgba(255,255,255,0.22); }
+
+input[type="file"] {
+  width: 100%; font-size: 0.75rem; color: rgba(255,255,255,0.5);
+  padding: 6px 0; cursor: pointer;
+}
+
+select {
+  width: 100%; background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 9px;
+  color: #fff; padding: 8px 12px; font-size: 0.8rem;
+  outline: none; cursor: pointer; transition: border-color 0.2s;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234facfe' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+select:focus { border-color: rgba(79,172,254,0.5); }
+select option { background: #1a1a3e; color: #fff; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 7px 13px; border-radius: 9px; font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.06); color: #fff;
+  transition: transform 0.16s, background 0.16s, box-shadow 0.16s;
+  backdrop-filter: blur(4px); user-select: none; white-space: nowrap;
+  font-family: inherit;
+}
+.btn:hover {
+  transform: scale(1.04); background: rgba(79,172,254,0.18);
+  box-shadow: 0 3px 14px rgba(79,172,254,0.25); border-color: rgba(79,172,254,0.4);
+}
+.btn:active { transform: scale(0.97); }
+
+/* primary send buttons */
+.btn-send-row { display: flex; gap: 8px; margin-top: 10px; }
+.btn-primary-send {
+  flex: 1; font-size: 0.84rem; font-weight: 800;
+  background: linear-gradient(90deg, rgba(79,172,254,0.28), rgba(0,242,254,0.18));
+  border-color: rgba(79,172,254,0.45);
+}
+.btn-web {
+  background: rgba(0,242,160,0.12); border-color: rgba(0,242,160,0.3); color: #00f2a0;
+}
+.btn-web:hover { background: rgba(0,242,160,0.2); border-color: rgba(0,242,160,0.5); box-shadow: 0 3px 14px rgba(0,242,160,0.2); }
+
+/* sidebar buttons */
+.sidebar-btn-group { display: flex; flex-direction: column; gap: 6px; }
+.btn-sm { font-size: 0.73rem; padding: 6px 10px; width: 100%; }
+
+/* ── DETAILS / ACCORDION ── */
+details {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 11px; overflow: hidden;
+}
+details[open] { border-color: rgba(79,172,254,0.2); }
+summary {
+  padding: 10px 14px; font-size: 0.8rem; font-weight: 700;
+  cursor: pointer; user-select: none; list-style: none;
+  color: rgba(255,255,255,0.75); display: flex; align-items: center; gap: 8px;
+}
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "›"; margin-left: auto; font-size: 1.1rem; color: rgba(79,172,254,0.6); transition: transform 0.2s; }
+details[open] summary::after { transform: rotate(90deg); }
+.details-body { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+#feedback, #vfeedback {
+  font-size: 0.73rem; color: rgba(79,172,254,0.7);
+  min-height: 14px; font-style: italic;
+}
+
+/* ── SEARCH ROW ── */
+.search-row { display: flex; gap: 6px; }
+.search-row input { flex: 1; }
+.search-row .btn { flex-shrink: 0; }
+
+/* ── MEMORY STATUS ── */
+#memoryStatus {
+  font-size: 0.68rem; color: rgba(255,255,255,0.3);
+  font-style: italic; line-height: 1.4;
+}
+
+/* ── SECTION DIVIDER ── */
+.sidebar-divider {
+  height: 1px; background: rgba(255,255,255,0.07); margin: 2px 0;
+}
+
+/* ── CHAT AREA ── */
+.chat-col {
+  flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
+.chat-input-card { flex-shrink: 0; }
+
+#chathistory {
+  flex: 1; overflow-y: auto;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; padding: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+#chathistory::-webkit-scrollbar { width: 5px; }
+#chathistory::-webkit-scrollbar-thumb { background: rgba(79,172,254,0.25); border-radius: 4px; }
+
+/* ── CHAT MESSAGES (preserved classes for JS) ── */
+.user-message {
+  background: rgba(79,172,254,0.1); border: 1px solid rgba(79,172,254,0.2);
+  border-radius: 10px; padding: 9px 13px; font-size: 0.83rem;
+  color: rgba(255,255,255,0.75); font-style: italic; line-height: 1.5; word-break: break-word;
+}
+.chatgpt-message {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(79,172,254,0.12);
+  border-radius: 12px; padding: 12px 14px; font-size: 0.85rem;
+  line-height: 1.65; color: rgba(255,255,255,0.88); word-break: break-word;
+}
+.chatgpt-message code {
+  background: rgba(79,172,254,0.12); border-radius: 4px;
+  padding: 1px 5px; font-size: 0.82em; color: #4facfe;
+}
+.chatgpt-message pre {
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 12px; overflow-x: auto;
+  font-size: 0.8rem; line-height: 1.5; margin-top: 8px;
+}
+
+/* loading */
+.loading-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 0.75rem; font-weight: 700; padding: 6px 12px;
+  border-radius: 20px; background: rgba(79,172,254,0.1);
+  border: 1px solid rgba(79,172,254,0.22); color: #4facfe; align-self: flex-start;
+}
+.loading-pill .dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #4facfe;
+  animation: pulse 1.2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ── MODAL (preserved for JS) ── */
+.modal {
+  display: none; position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+}
+.modal-content {
+  background: rgba(20,20,45,0.98); border: 1px solid rgba(79,172,254,0.3);
+  border-radius: 16px; padding: 28px; width: 560px; max-width: 92vw;
+  max-height: 80vh; overflow-y: auto; position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+}
+.modal-content h2 {
+  font-size: 1rem; font-weight: 800; color: #4facfe; margin-bottom: 6px;
+}
+.modal-content small { font-size: 0.72rem; color: rgba(255,255,255,0.35); }
+#chatHistoryContent {
+  margin-top: 14px; font-size: 0.82rem; line-height: 1.7;
+  color: rgba(255,255,255,0.7); white-space: pre-wrap;
+}
+.close {
+  position: absolute; top: 14px; right: 16px;
+  width: 18px; height: 18px; background: #ff5f57; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: bold; color: rgba(0,0,0,0.6);
+  transition: background 0.2s; line-height: 1;
+}
+.close:hover { background: #ff3b30; }
+
+/* ── SUCCESS/ERROR (used by JS) ── */
+.success-message {
+  font-size: 0.75rem; font-weight: 700; padding: 6px 12px;
+  border-radius: 8px; background: rgba(0,242,160,0.12);
+  color: #00f2a0; border: 1px solid rgba(0,242,160,0.25); margin-top: 4px;
+}
+.error-message {
+  font-size: 0.75rem; font-weight: 700; padding: 6px 12px;
+  border-radius: 8px; background: rgba(255,80,80,0.1);
+  color: #ff6b6b; border: 1px solid rgba(255,80,80,0.2); margin-top: 4px;
+}
+
+/* ── IFRAME CONTAINER (devbot-style preview if needed) ── */
+.iframe-container { width: 100%; border-radius: 10px; overflow: hidden; background: #fff; }
+.iframe-container iframe { width: 100%; height: 280px; border: none; display: block; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 700px) {
+  html, body { overflow: auto; }
+  .page { height: auto; overflow: visible; padding: 14px; }
+  .main-cols { flex-direction: column; }
+  .sidebar { width: 100%; }
+  #chathistory { min-height: 300px; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div class="icon-badge">🤖</div>
+    <div class="page-header-text">
+      <h1>Master Chatbot</h1>
+      <p>
+        Models: <code>gpt-5-search-api</code> · <code>gpt-4.1-nano</code> · <code>gpt-4.1-mini</code> Long-term memory via <code>embeddings</code> endpoint
+      </p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- MAIN -->
+  <div class="main-cols">
+
+    <!-- SIDEBAR -->
+    <aside id="menu" class="sidebar">
+        <input type="password" id="apikey" placeholder="API key loaded from localStorage…" readonly style="margin-bottom:10px;">
+      <!-- Document Analyzer -->
+      <details>
+        <summary>📋 Document Analyzer</summary>
+        <div class="details-body" id="operations">
+          <input type="file" accept=".txt,.pdf,.rtf,.xml,.html,.css,.js,.json,.vb,.php,.py" id="file-input">
+          <div id="feedback"></div>
+          <button class="btn btn-sm" type="button" onclick="analyzeFile();">🔍 Analyze File</button>
+        </div>
+      </details>
+
+      <!-- Image Analyzer -->
+      <details>
+        <summary>📊 Image Analyzer</summary>
+        <div class="details-body" id="voperations">
+          <form enctype="multipart/form-data" method="POST">
+            <input type="file" accept=".jpg,.png" name="file" id="vfile-input">
+            <div id="vfeedback"></div>
+            <div style="display:flex; gap:6px; margin-top:6px;">
+              <button class="btn btn-sm" id="vuploadBtn" type="submit">⬆️ Upload</button>
+              <button class="btn btn-sm" type="button" onclick="getChatGPTResponseIMG();">🔍 Analyze</button>
+            </div>
+          </form>
+        </div>
+      </details>
+
+      <!-- Vision jQuery (preserved) -->
+      <script>
+        $(document).ready(function () {
+          $('#vuploadBtn').click(function (e) {
+            e.preventDefault();
+            $.ajax({
+              url: 'vupload.php',
+              type: 'POST',
+              data: new FormData($('form')[0]),
+              processData: false,
+              contentType: false,
+              success: function (response) {
+                const data = JSON.parse(response);
+                if (data.status === "success") {
+                  $('#vfeedback').html("✅ File uploaded.");
+                  $('#voperations button[type="button"]').attr('onclick', `submitImage("${data.url}");`);
+                } else {
+                  $('#vfeedback').html(data);
+                }
+              }
+            });
+          });
+        });
+      </script>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Memory & Export -->
+      <div class="sidebar-btn-group">
+        <button class="btn btn-sm" id="showChatButton">📂 Show Memory</button>
+        <button class="btn btn-sm" onclick="clearLongMemory()">🗑 Clear Long Memory</button>
+        <small id="memoryStatus"></small>
+        <button class="btn btn-sm" id="savetxt">💾 Export Chat</button>
+        <button class="btn btn-sm"
+          onclick="responsiveVoice.speak(window.getSelection().toString(), 'Italian Female', {rate: 1.1});">
+          🔊 Repeat Selected
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Personality Select -->
+      <div>
+        <span class="field-label">Personality</span>
+        <select id="selectOption">
+          <option selected>Select a personality</option>
+          <option disabled>── Programming ──</option>
+          <option value="01">Full Stack Web Developer</option>
+          <option value="13">Direct Web Bot</option>
+          <option value="02">.NET Developer</option>
+          <option value="03">Wordpress Master</option>
+          <option value="04">JS Frameworks Wizard</option>
+          <option value="05">Retrocomputing Master</option>
+          <option disabled>── Music &amp; Cinema ──</option>
+          <option value="06">Rock and Metal Fanatic</option>
+          <option value="07">Generic Music Expert</option>
+          <option value="08">Movie Expert</option>
+          <option value="09">TV Serials Expert</option>
+          <option disabled>── Other ──</option>
+          <option value="10">Multi Languages Translator</option>
+          <option value="11">Old English Poet</option>
+          <option value="12">Papa Smurf</option>
+          <option value="14">Nasty Rapper</option>
+          <option value="15">Academic Peer Reviewer</option>
+          <option value="16">Brand Identity Architect</option>
+          <option value="17">Contrarian Analyst</option>
+          <option value="18">Book Architect</option>
+          <option value="19">Social Media Strategist</option>
+          <option value="20">Rule-Breaking Campaigns Creator</option>
+        </select>
+      </div>
+
+      <!-- Search -->
+      <div>
+        <span class="field-label">Search in Chats</span>
+        <div class="search-row">
+          <input type="text" id="search-input" placeholder="Search…">
+          <button class="btn" id="search-button">🔍</button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- CHAT COLUMN -->
+    <div class="chat-col">
+
+      <!-- Input card -->
+      <div class="card chat-input-card">
+        <textarea id="prompt" rows="4" placeholder="Your prompt…" autocomplete="off" autofocus></textarea>
+        <div class="btn-send-row">
+          <button class="btn btn-primary-send" onclick="sendMessage()">⚡ Send</button>
+          <button class="btn btn-web" onclick="sendWeb()">🌐 Search the Web</button>
+        </div>
+      </div>
+
+      <!-- Chat history -->
+      <div id="chathistory"></div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL (id/class preserved for JS) -->
+<div id="chatModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Chat Memory</h2>
+    <small>Use <strong>Export Chat</strong> to save this content</small>
+    <div id="chatHistoryContent"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  VivacityGPT Master Chatbot — JavaScript completo
+//  Aggiornato: analisi file via OpenAI /v1/files endpoint
+//  File_id mantenuto per follow-up conversazionali completi.
+// ============================================================
+
+function myFunction() {
+  var x = document.getElementById("myTopnav");
+  if (x.className === "topnav") {
+    x.className += " responsive";
+  } else {
+    x.className = "topnav";
+  }
+}
+        
+const localization = 'Pomezia (RM), Italy';
+var time = new Date();
+var hour = time.getHours();
+var minute = time.getMinutes();
+console.log(time);
+const today = time.toLocaleString('it-IT', { dateStyle: 'full', timeStyle: 'short' });
+        
+const selfAwareness = `
+{
+"VivacityGPT_Master_Chatbot": {
+"metadata": {
+"name": "VivacityGPT Master Chatbot",
+"parent_suite": "VivacityGPT Complete",
+"creator": "Alessandro Demontis",
+"owner": "Vivacity Design Web Agency",
+"suite_url": "https://www.vivacitydesign.net/vdgptscomplete/",
+"languages": "HTML, CSS, JavaScript, PHP",
+"version": "v20",
+"location": "Pomezia (RM), Italy",
+"dateContext": "Dynamic, retrieved at runtime",
+"purpose": "Complete chat interface integrating OpenAI chat, search, file and vision APIs with personality selection."
+},
+"core_structure": {
+"global_variables": [
+"localization",
+"time",
+"hour",
+"minute",
+"today",
+"chatMemory[]",
+"currentFileId",
+"currentFilename",
+"apikey (stored in localStorage)"
+],
+"startup_sequence": [
+"get current time and date",
+"format localization info",
+"initialize chatMemory",
+"bind UI event listeners",
+"auto‑set initial personality definition (this)",
+"initialize long term memory (load embeddings from storage or DB)"
+]
+},
+"modules": {
+"Search_System": {
+"functions": [
+"searchChat()"
+],
+"description": "Client‑side keyword search in chat history.",
+"elements_affected": [
+"#search-input",
+"#chathistory .user-message",
+"#chathistory .chatgpt-message"
+]
+},
+"Save_Chat": {
+"functions": [
+"handleSaveButtontClick()",
+"saveChatContentTxt()"
+],
+"output_format": "Plain text (.txt)",
+"features": [
+"Removes UI words (‘Copy’, ‘Send to TTS’)",
+"Generates timestamped filename",
+"Triggers automatic download via Blob URL"
+]
+},
+"Chat_Core": {
+"functions": [
+"sendMessage()",
+"getChatGPTResponse(userInput, chatMemory)",
+"showMessage(sender, message, tokens)"
+],
+"models_used": {
+"default": "gpt-5-chat-latest",
+"with_file": "gpt-4.1-mini"
+},
+"token_tracking": true,
+"max_tokens": 15999,
+"response_cleaning": [
+"Removes Markdown/code fences",
+"Removes bold and headings",
+"Outputs plain text"
+],
+"features": [
+"Integrates long term memory context into chat prompts"
+]
+},
+"Long_Term_Memory": {
+"description": "Memory system based on embeddings for semantic search and retrieval.",
+"functions": [
+"createEmbedding(text): calls OpenAI embeddings endpoint to create vector",
+"addMemoryEntry(text, metadata): stores text and embedding vector in long term storage",
+"searchLongMemory(query, topK): queries long term memory with embedding similarity, returns top K matches with score and metadata",
+"deleteMemoryEntry(id): removes an item from long term memory",
+"updateMemoryEntry(id, newText): updates text and embedding for an entry",
+"persistMemory(): saves current memory data to local storage or database",
+"loadMemory(): loads memory data from persistent storage"
+],
+"features": [
+"Semantic vector search with cosine similarity (topK results)",
+"Supports asynchronous embedding generation",
+"Threshold filtering to exclude low relevance matches",
+"Integration with chat core to add context automatically",
+"Memory persistence and management",
+"Limits texts to defined max size for embedding"
+]
+},
+"Web_Search_Extension": {
+"functions": [
+"sendWeb()",
+"getChatGPTResponseWeb()",
+"cleanResponseText()",
+"showMessageWeb()"
+],
+"model_used": "gpt-5-search-api",
+"options": {
+"web_search_options": {
+"search_context_size": "medium"
+}
+},
+"citation_handling": "Collects URL citations into clickable references"
+},
+"Document_Analyzer": {
+"purpose": "Unified text/PDF/image analyzer via OpenAI /v1/files",
+"entrypoint": "analyzeFile()",
+"functions": [
+"uploadToOpenAI(file)",
+"deleteOpenAIFile(fileId)",
+"analyzeTextFile(textContent, filename)",
+"analyzeOpenAIFile(fileId, filename)",
+"readFileAsText(file)",
+"closeDocument()"
+],
+"supported_mime_types": [
+"application/pdf",
+"image/jpeg",
+"image/png",
+"image/gif",
+"image/webp",
+"text/*",
+"application/json",
+"application/javascript"
+],
+"limits": {
+"file_size": "≤20 MB",
+"text_truncation": "60 000 chars"
+],
+"models_used": [
+"gpt-4.1-mini"
+],
+"analysis_output": {
+"summary": "Detailed file synopsis and key points",
+"cost_display": true
+},
+"memory_persistence": "Stores file_id or text summary for follow‑up Q&A"
+},
+"Image_Analyzer_(Vision)": {
+"functions": [
+"submitImage(imgUrl)",
+"getChatGPTResponseIMG(fileUrl, chatMemory)"
+],
+"model_used": "gpt-4.1-nano",
+"capabilities": [
+"General scene and object recognition",
+"Detect and transcribe code from images",
+"Identify engineering elements or human features"
+]
+},
+"Personality_System": {
+"storage": "system prompt → chatMemory[0]",
+"selection_methods": [
+"dropdown #selectOption with 19 predefined personalities",
+"automatic DOMContentLoaded initialization"
+],
+"personalities": {
+"10": "Multilingual translator and teacher",
+"11": "17th‑century poet (Old English)",
+"12": "Papa Smurf persona",
+"13": "Code‑only generator bot",
+"14": "Rap‑style rhyming speaker",
+"15": "Academic peer reviewer / editor",
+"16": "Brand identity architect",
+"17": "Contrarian analyst",
+"18": "Book architect (8‑phase creative writing guide)",
+"19": "Social media strategy advisor",
+"20": "Rule-Beaking campaign creator",
+"01": "Full stack developer (Alex/Liliana dual tone)",
+"02": ".NET developer (Alex/Liliana dual tone)",
+"03": "WordPress/Elementor specialist (Marco)",
+"04": "JavaScript frameworks developer (Liliana)",
+"05": "Retrocomputing enthusiast (Pascal, BASIC, etc.)",
+"06": "Heavy metal guitarist / reviewer",
+"07": "Pop‑rock music journalist (Alex, of Vivacity Music Style)",
+"08": "Movie critic",
+"09": "TV serials expert",
+"default": "VivacityGPT practical assistant"
+}
+},
+"Chat_History_UI": {
+"functions": [
+"showChatHistory()",
+"closeModal()"
+],
+"elements": [
+"#chatModal",
+"#chatHistoryContent"
+],
+"features": [
+"Displays stored messages with user/assistant labels",
+"Modal window with backdrop click to close"
+]
+},
+"data_flows": {
+"API_endpoints": [
+"POST https://api.openai.com/v1/chat/completions",
+"POST https://api.openai.com/v1/embeddings",
+"POST/DELETE https://api.openai.com/v1/files"
+],
+"authentication": "Bearer key read from localStorage ('openaikey')",
+"chat_sequence": [
+"User input → Generate embedding for user input → Search long term memory with embedding, get topK = 3 relevant entries → 
+Combine retrieved memory context with chatMemory system prompt or user prompt → Show user's message →
+Send complete messages array (chatMemory + user input + memory context) to OpenAI API → Process API response →
+Show VivacityGPT's response → Append all exchanges to chatMemory"
+],
+"file_sequence": [
+"User selects file → analyzeFile() → uploadToOpenAI() or readFileAsText() → analyze*() → showMessage(summary)"
+],
+"image_sequence": [
+"submitImage(url) → getChatGPTResponseIMG() → show analysis and preview"
+]
+},
+"pricing_reference_summary_USD_per_Mtoken": {
+"gpt-5-chat-latest": {
+"prompt": 1.25,
+"response": 10
+},
+"gpt-5-search-api": {
+"prompt": 0.15,
+"response": 0.6
+},
+"gpt-4.1-mini": {
+"prompt": 0.4,
+"response": 1.6
+},
+"gpt-4.1-nano": {
+"response": 0.4
+}
+},
+"error_handling_and_feedback": {
+"methods": [
+"try/catch around all API calls",
+"alert() user on failure",
+"console.error logs",
+"visual feedback via spinner and #feedback field"
+]
+},
+"limitations_and_security": {
+"max_file_size_MB": 20,
+"text_length_limit_chr": 60000,
+"security": "API key stored locally (user responsibility)"
+},
+"design_notes": {
+"communication_style": "No markdown output, plain text responses",
+"timestamping": "Messages prefixed with + or - and hour:minute",
+"scroll_behavior": "Always auto‑scroll to bottom after new message",
+"memory_reset": "closeDocument() clears chat and resets feedback"
+}
+}
+}
+}
+`        
+
+// ─── Chat Search ──────────────────────────────────────────────
+const searchButton = document.getElementById("search-button");
+searchButton.addEventListener("click", searchChat);
+
+function searchChat() {
+  const searchInput = document.getElementById("search-input");
+  const searchTerm = searchInput.value.trim().toLowerCase();
+  const messageElements = document.querySelectorAll(
+    "#chathistory .user-message, #chathistory .chatgpt-message"
+  );
+  messageElements.forEach((messageElement) => {
+    const messageText = messageElement.innerText.toLowerCase();
+    if (messageText.includes(searchTerm)) {
+      messageElement.style.display = "block";
+      messageElement.innerText = messageText;
+    } else {
+      messageElement.style.display = "none";
+    }
+  });
+  searchInput.value = "";
+}
+
+// ─── Save Chat ────────────────────────────────────────────────
+var saveButtont = document.getElementById("savetxt");
+saveButtont.addEventListener("click", handleSaveButtontClick);
+
+function handleSaveButtontClick() {
+  saveChatContentTxt();
+}
+
+function saveChatContentTxt() {
+  var chatContent = document.getElementById("chathistory").innerText;
+  chatContent = chatContent.replace(/Copy/g, "");
+  chatContent = chatContent.replace(/Send to TTS/g, "");
+  var currentTimestamp = new Date();
+  var datetime = currentTimestamp.toISOString();
+  var filename = "chatsession_v" + datetime.replace(/[-:.]/g, "");
+  var blob = new Blob([chatContent], { type: "text/plain" });
+  var url = URL.createObjectURL(blob);
+  var downloadLink = document.createElement("a");
+  downloadLink.href = url;
+  downloadLink.download = filename + ".txt";
+  downloadLink.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Chat Memory ──────────────────────────────────────────────
+let chatMemory = [];
+
+// Document Analyzer state — file_id mantenuto per follow-up completi
+let currentFileId = null;
+let currentFilename = null;
+
+function createMemory(messages) {
+  const memory = [];
+  for (const msg of messages) {
+    memory.push({ role: msg.role, content: msg.content });
+  }
+  return memory;
+}
+        
+// ─── Long-Term Semantic Memory ────────────────────────────────
+
+function cosineSimilarity(a, b) {
+  const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
+  const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+  const normB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+  return dot / (normA * normB);
+}
+
+async function saveToLongMemory(userInput, botResponse) {
+  const apikey = localStorage.getItem("openaikey");
+  const testo = `Utente: ${userInput}\nBot: ${botResponse}`;
+  try {
+    const res = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
+      body: JSON.stringify({ model: "text-embedding-3-small", input: testo })
+    });
+    const data = await res.json();
+    const vettore = data.data[0].embedding;
+    const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
+    memoria.push({ testo, vettore, data: new Date().toISOString() });
+    localStorage.setItem("vivacityLongMemory", JSON.stringify(memoria));
+  } catch (e) { console.error("saveToLongMemory error:", e); }
+}
+
+async function searchLongMemory(query, topK = 3) {
+  const apikey = localStorage.getItem("openaikey");
+  const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
+  if (memoria.length === 0) return "";
+  try {
+    const res = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
+      body: JSON.stringify({ model: "text-embedding-3-small", input: query })
+    });
+    const data = await res.json();
+    const queryVettore = data.data[0].embedding;
+    const risultati = memoria
+      .map(item => ({ testo: item.testo, data: item.data, score: cosineSimilarity(queryVettore, item.vettore) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK);
+    if (risultati[0].score < 0.5) return ""; // soglia: ignora ricordi poco rilevanti
+    return "Ricordi rilevanti da sessioni passate:\n" + risultati.map(r => `[${r.data}] ${r.testo}`).join("\n---\n");
+          
+  } catch (e) { console.error("searchLongMemory error:", e); return ""; }
+}
+
+//inizializza la coscienza del chatbot in memoria a lungo termine        
+async function initSelfAwareness() {
+  const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
+  
+  // Controlla se è già stata salvata
+  const giaSalvata = memoria.some(item => item.testo.includes("VivacityGPT_Master_Chatbot"));
+  if (giaSalvata) return;
+  
+  // Salvala come ricordo permanente
+  await saveToLongMemory(
+    "Chi sei e come sei fatto?",
+    selfAwareness
+  );
+  console.log("Self-awareness salvata in long memory.");
+}
+
+// ─── Spinner ──────────────────────────────────────────────────
+function showSpinner(message = "Processing...") {
+  let spinner = document.getElementById("spinner");
+  if (!spinner) {
+    spinner = document.createElement("div");
+    spinner.id = "spinner";
+    spinner.style.position = "fixed";
+    spinner.style.top = "0";
+    spinner.style.left = "0";
+    spinner.style.width = "100%";
+    spinner.style.height = "100%";
+    spinner.style.background = "rgba(0, 0, 0, 0.4)";
+    spinner.style.display = "flex";
+    spinner.style.justifyContent = "center";
+    spinner.style.alignItems = "center";
+    spinner.style.zIndex = "9999";
+    spinner.innerHTML = `
+      <div style="background:white;padding:20px 40px;border-radius:8px;font-family:sans-serif;font-size:16px;text-align:center;">
+        <div class="spinner-circle" style="width:32px;height:32px;border:4px solid #ccc;border-top-color:#007bff;border-radius:50%;margin:0 auto 10px auto;animation:spin 1s linear infinite;"></div>
+        <span id="spinner-message">${message}</span>
+      </div>
+      <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+    `;
+    document.body.appendChild(spinner);
+  } else {
+    document.getElementById("spinner-message").textContent = message;
+    spinner.style.display = "flex";
+  }
+}
+
+function hideSpinner() {
+  const spinner = document.getElementById("spinner");
+  if (spinner) spinner.style.display = "none";
+}
+
+// ─── Send Message (normal chat) ───────────────────────────────
+async function sendMessage() {
+  const apikey = localStorage.getItem("openaikey");
+  document.getElementById("apikey").value = apikey;
+  if (apikey === "") { alert("No OpenAI API Key found."); return; }
+  const inputElement = document.getElementById("prompt");
+  const userInput = inputElement.value.trim();
+  if (userInput !== "") {
+    showMessage("Guest", userInput, "");
+    chatMemory = await getChatGPTResponse(userInput, chatMemory);
+    inputElement.value = "";
+  }
+}
+
+// ─── Send Web Search ─────────────────────────────────────────
+async function sendWeb() {
+  const apikey = localStorage.getItem("openaikey");
+  document.getElementById("apikey").value = apikey;
+  if (apikey === "") { alert("No OpenAI API Key found."); return; }
+  const inputElement = document.getElementById("prompt");
+  const userInput = inputElement.value.trim();
+  if (userInput !== "") {
+    showMessage("Guest", userInput, "");
+    chatMemory = await getChatGPTResponseWeb(userInput, chatMemory);
+    inputElement.value = "";
+  }
+}
+
+// ─── Copy / TTS buttons ───────────────────────────────────────
+function handleCopyButtonClick(event) {
+  event.preventDefault();
+  const text = this.dataset.message;
+  const input = document.createElement("input");
+  input.value = text;
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  document.body.removeChild(input);
+}
+
+function handleTransferButtonClick(event) {
+  event.preventDefault();
+  const text = this.dataset.message;
+  localStorage.setItem("fromTxtchatbot", text);
+  window.location.href = "https://www.vivacitydesign.net/vdgptscomplete/tts.html";
+}
+
+// ─── showMessage ──────────────────────────────────────────────
+function showMessage(sender, message, tokens) {
+  const chatContainer = document.getElementById("chathistory");
+  const typingIndicator = document.getElementById("typing-indicator");
+  if (typingIndicator && sender === "VivacityGPT") {
+    chatContainer.removeChild(typingIndicator);
+  }
+  const messageElement = document.createElement("div");
+  if (sender !== "Guest") {
+    const separator = document.createElement("p");
+    separator.style.fontSize = '.7rem';
+    separator.innerHTML = `${tokens}`;
+    messageElement.innerText = `-[${hour}:${minute}] - ${sender}: ${message}`;
+    messageElement.appendChild(separator);
+  } else {
+    messageElement.innerText = `+[${hour}:${minute}] - ${sender}: ${message}`;
+  }
+  if (sender === "Guest") {
+    messageElement.classList.add("user-message-compact");
+  } else if (sender === "VivacityGPT") {
+    messageElement.classList.add("chatgpt-message-compact");
+    const commands = document.createElement("div");
+    commands.classList.add("flex", "gap-1");
+    const copyButton = document.createElement("button");
+    copyButton.classList.add("btn", "btn-secondary");
+    copyButton.innerText = "Copy";
+    copyButton.dataset.message = message;
+    copyButton.addEventListener("click", handleCopyButtonClick);
+    const transferButton = document.createElement("button");
+    transferButton.classList.add("btn", "btn-secondary");
+    transferButton.innerText = "Send to TTS";
+    transferButton.dataset.message = message;
+    transferButton.addEventListener("click", handleTransferButtonClick);
+    commands.appendChild(copyButton);
+    commands.appendChild(transferButton);
+    messageElement.appendChild(commands);
+  }
+  chatContainer.appendChild(messageElement);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// ─── getChatGPTResponse (normal chat) ────────────────────────
+async function getChatGPTResponse(userInput, chatMemory = []) {
+  const apikey = localStorage.getItem("openaikey");
+  document.getElementById("apikey").value = apikey;
+  if (apikey === "") { alert("No OpenAI API Key found."); return; }
+  showSpinner("Generating response...");
+// cerca memoria rilevante prima di chiamare OpenAI
+const contestoMemoria = await searchLongMemory(userInput);
+  // Se c'è un documento attivo, allegalo come file ad ogni follow-up
+  // così GPT può vedere il contenuto completo, non solo il summary
+  if (contestoMemoria && chatMemory.length > 0) {
+    chatMemory[0].content = chatMemory[0].content + "\n\n" + contestoMemoria;
+          console.log(contestoMemoria);
+  }        
+        
+  const userMessage = currentFileId
+    ? {
+        role: "user",
+        content: [
+          { type: "text", text: userInput },
+          { type: "file", file: { file_id: currentFileId } }
+        ]
+      }
+    : { role: "user", content: userInput };
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
+      body: JSON.stringify({
+       
+        model: "gpt-4.1-mini",
+        messages: [...chatMemory, userMessage],
+        max_tokens: 15999
+      })
+    });
+    if (!response.ok) throw new Error("Error while requesting to the API");
+    const data = await response.json();
+    if (!data.choices || !data.choices.length || !data.choices[0].message || !data.choices[0].message.content)
+      throw new Error("Invalid API response");
+    const chatGPTResponse = data.choices[0].message.content.trim();
+    var cleanResponse = chatGPTResponse
+      .replace(/(```html|```css|```javascript|```json|```js|```php|```python|```vb|```vbnet|```cpp|```java|```csharp)(.*?)/gs, "$2")
+      .replace(/```/g, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
+    const tokenCount = document.createElement("p");
+    if (data.usage.completion_tokens) {
+      const requestTokens = data.usage.prompt_tokens;
+      const responseTokens = data.usage.completion_tokens;
+      const totalTokens = data.usage.total_tokens;
+      const pricepertokenprompt = 1.25 / 1000000;
+      const pricepertokenresponse = 10 / 1000000;
+      const priceperrequest = pricepertokenprompt * requestTokens;
+      const priceperresponse = pricepertokenresponse * responseTokens;
+      const totalExpense = priceperrequest + priceperresponse;
+      tokenCount.innerHTML = `<hr>Your request used ${requestTokens} tokens and costed ${priceperrequest.toFixed(6)}USD<br>This response used ${responseTokens} tokens and costed ${priceperresponse.toFixed(6)}USD<br>Total Tokens: ${totalTokens}. This interaction costed you: ${totalExpense.toFixed(6)}USD.`;
+    } else {
+      tokenCount.innerHTML = "Unable to track the number of used tokens.";
+    }
+    showMessage("VivacityGPT", cleanResponse, tokenCount.innerHTML);
+chatMemory.push({ role: "user", content: userInput });
+chatMemory.push({ role: "assistant", content: cleanResponse });
+await saveToLongMemory(userInput, cleanResponse); // ← aggiungi questa riga
+return chatMemory;
+  } catch (error) {
+    console.error(error);
+    alert("An error occurred during the request. Check your OpenAI account or retry later.");
+  } finally {
+    hideSpinner();
+  }
+}
+
+// ─── getChatGPTResponseWeb (web search) ───────────────────────
+async function getChatGPTResponseWeb(userInput, chatMemory = []) {
+  const apikey = localStorage.getItem("openaikey");
+  document.getElementById("apikey").value = apikey;
+  if (apikey === "") { alert("No OpenAI API Key found."); return; }
+  showSpinner("Searching the web...");
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
+      body: JSON.stringify({
+        //model: "gpt-4o-mini-search-preview",
+              model: "gpt-5-search-api",
+        web_search_options: { search_context_size: "medium" },
+        messages: [...chatMemory, { role: "user", content: userInput }]
+      })
+    });
+    if (!response.ok) throw new Error("Error while requesting to the API");
+    const data = await response.json();
+    if (!data.choices || !data.choices.length || !data.choices[0].message || !data.choices[0].message.content)
+      throw new Error("Invalid API response");
+    const citations = data.choices[0].message.annotations || [];
+    const chatGPTResponse = data.choices[0].message.content.trim();
+    let cleanResponse = cleanResponseText(chatGPTResponse, citations);
+    cleanResponse = cleanResponse
+      .replace(/(```html|```css|```javascript|```php|```python|```vb|```vb.net|cpp|java|csharp)(.*?)/gs, "$2")
+      .replace(/```/g, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
+    const citationLinks = [];
+    if (citations.length > 0) {
+      citations.forEach(annotation => {
+        if (annotation.type === 'url_citation' && annotation.url_citation) {
+          const { title, url } = annotation.url_citation;
+          citationLinks.push({ title, url });
+        }
+      });
+    }
+    let tokenInfo = "";
+    if (data.usage.completion_tokens) {
+      const requestTokens = data.usage.prompt_tokens;
+      const responseTokens = data.usage.completion_tokens;
+      const totalTokens = data.usage.total_tokens;
+      const pricepertokenprompt = 0.15 / 1000000;
+      const pricepertokenresponse = 0.60 / 1000000;
+      const priceperrequest = pricepertokenprompt * requestTokens;
+      const priceperresponse = pricepertokenresponse * responseTokens;
+      const totalExpense = priceperrequest + priceperresponse;
+      tokenInfo = `Your request used ${requestTokens} tokens and cost ${priceperrequest.toFixed(6)}USD<br>` +
+        `This response used ${responseTokens} tokens and cost ${priceperresponse.toFixed(6)}USD<br>` +
+        `Total Tokens: ${totalTokens}. This interaction cost you: ${totalExpense.toFixed(6)}USD.`;
+    } else {
+      tokenInfo = "Unable to track the number of used tokens.";
+    }
+    showMessageWeb("VivacityGPT", cleanResponse, citationLinks, tokenInfo);
+    chatMemory.push({ role: "user", content: userInput });
+    chatMemory.push({ role: "assistant", content: cleanResponse });
+    return chatMemory;
+  } catch (error) {
+    console.error(error);
+    alert("An error occurred during the request. Check your OpenAI account or retry later.");
+  } finally {
+    hideSpinner();
+  }
+}
+
+function cleanResponseText(response, citations) {
+  const citationUrls = citations
+    .filter(a => a.type === 'url_citation' && a.url_citation && a.url_citation.url)
+    .map(a => a.url_citation.url);
+  let cleanedResponse = response;
+  citationUrls.forEach(url => {
+    const urlRegex = new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    cleanedResponse = cleanedResponse.replace(urlRegex, '');
+  });
+  cleanedResponse = cleanedResponse.replace(/https?:\/\/[^\s]+/g, '');
+  cleanedResponse = cleanedResponse
+    .replace(/[ ]{2,}/g, ' ')
+    .replace(/\.\s+/g, '.<br>');
+  cleanedResponse = cleanedResponse.replace(/\(\[[^\]]+\]\(\)\)/g, '');
+  return cleanedResponse.trim();
+}
+
+function showMessageWeb(sender, message, citationLinks = [], tokens = "") {
+  const chatContainer = document.getElementById("chathistory");
+  const typingIndicator = document.getElementById("typing-indicator");
+  if (typingIndicator && sender === "VivacityGPT") {
+    chatContainer.removeChild(typingIndicator);
+  }
+  const messageElement = document.createElement("div");
+  if (sender !== "Guest") {
+    const responseContainer = document.createElement("div");
+    responseContainer.classList.add("response-container");
+    const formattedMessage = document.createElement("div");
+    formattedMessage.classList.add("formatted-message");
+    formattedMessage.innerHTML = `${message}`;
+    responseContainer.appendChild(formattedMessage);
+    if (citationLinks.length > 0) {
+      const citationSection = document.createElement("div");
+      citationSection.classList.add("citation-section");
+      const citationTitle = document.createElement("strong");
+      citationTitle.textContent = "References:";
+      citationSection.appendChild(document.createElement("br"));
+      citationSection.appendChild(citationTitle);
+      citationSection.appendChild(document.createElement("br"));
+      citationLinks.forEach(link => {
+        const citationLink = document.createElement("a");
+        citationLink.href = link.url;
+        citationLink.textContent = link.title;
+        citationLink.target = "_blank";
+        citationSection.appendChild(citationLink);
+        citationSection.appendChild(document.createElement("br"));
+      });
+      responseContainer.appendChild(citationSection);
+    }
+    const tokenSection = document.createElement("div");
+    tokenSection.classList.add("token-section");
+    tokenSection.innerHTML = tokens;
+    responseContainer.appendChild(tokenSection);
+    messageElement.innerHTML = `-[${new Date().toLocaleTimeString()}] - ${sender}: `;
+    messageElement.appendChild(responseContainer);
+  } else {
+    messageElement.innerText = `+[${new Date().toLocaleTimeString()}] - ${sender}: ${message}`;
+  }
+  if (sender === "Guest") {
+    messageElement.classList.add("user-message-compact");
+  } else if (sender === "VivacityGPT") {
+    messageElement.classList.add("chatgpt-message-compact");
+    const commands = document.createElement("div");
+    commands.classList.add("flex", "gap-1");
+    const copyButton = document.createElement("button");
+    copyButton.classList.add("btn", "btn-secondary");
+    copyButton.innerText = "Copy";
+    copyButton.dataset.message = message;
+    copyButton.addEventListener("click", handleCopyButtonClick);
+    const transferButton = document.createElement("button");
+    transferButton.classList.add("btn", "btn-secondary");
+    transferButton.innerText = "Send to TTS";
+    transferButton.dataset.message = message;
+    transferButton.addEventListener("click", handleTransferButtonClick);
+    commands.appendChild(copyButton);
+    commands.appendChild(transferButton);
+    messageElement.appendChild(commands);
+  }
+  chatContainer.appendChild(messageElement);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DOCUMENT ANALYZER — Nuovo flusso via OpenAI /v1/files
+//  Sostituisce: upload.php + fetch(fileURL) + aPDF API
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Carica il file su OpenAI Files endpoint e restituisce l'oggetto file.
+ * Supporta .txt, .pdf e tutti gli altri tipi accettati dal form.
+ * Limite: 20 MB (limite pratico OpenAI per /v1/files).
+ */
+async function uploadToOpenAI(file) {
+  const apikey = localStorage.getItem("openaikey");
+  if (!apikey) {
+    alert("No OpenAI API Key found.");
+    return null;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    alert("File too large (>20 MB): please reduce its size before uploading.");
+    return null;
+  }
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("purpose", "assistants");
+  showSpinner("Uploading file to OpenAI...");
+  try {
+    const response = await fetch("https://api.openai.com/v1/files", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + apikey },
+      body: formData
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(errText);
+    }
+    const data = await response.json();
+    console.log("OpenAI file upload OK:", data);
+    return data; // { id, object:"file", filename, purpose, ... }
+  } catch (err) {
+    console.error("Upload error:", err);
+    alert("Error during upload: " + err.message);
+    return null;
+  } finally {
+    hideSpinner();
+  }
+}
+
+/**
+ * Elimina il file da OpenAI dopo l'analisi per non accumulare storage.
+ */
+async function deleteOpenAIFile(fileId) {
+  const apikey = localStorage.getItem("openaikey");
+  try {
+    await fetch(`https://api.openai.com/v1/files/${fileId}`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + apikey }
+    });
+    console.log("OpenAI file deleted:", fileId);
+  } catch (err) {
+    console.warn("Could not delete file from OpenAI:", err);
+  }
+}
+
+/**
+ * Punto d'ingresso principale per il Document Analyzer.
+ * Viene chiamato dal pulsante "Analyze the file" nel form.
+ * Gestisce sia file di testo che PDF in modo unificato via file_id.
+ */
+async function analyzeFile() {
+  const fileInput = document.getElementById("file-input");
+  const feedbackEl = document.getElementById("feedback");
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("Please select a file first!");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const filename = file.name;
+  const mimeType = file.type;
+
+  // MIME types supportati da OpenAI via file_id
+  const openAISupportedTypes = [
+    "application/pdf",
+    "image/jpeg", "image/png", "image/gif", "image/webp"
+  ];
+
+  if (currentFileId) {
+    await deleteOpenAIFile(currentFileId);
+    currentFileId = null;
+    currentFilename = null;
+  }
+
+  chatMemory = [];
+  feedbackEl.innerHTML = "Uploading...";
+
+  const isOpenAISupported = openAISupportedTypes.includes(mimeType);
+
+  if (isOpenAISupported) {
+    // PDF/immagini → upload normale con file_id
+    const uploaded = await uploadToOpenAI(file);
+    if (!uploaded) { feedbackEl.innerHTML = "Upload failed."; return; }
+    currentFileId = uploaded.id;
+    currentFilename = filename;
+    feedbackEl.innerHTML = `File <strong>${filename}</strong> uploaded. Analyzing...`;
+    await analyzeOpenAIFile(currentFileId, filename);
+
+  } else {
+    // File di testo (CSS, JSON, RTF, JS, ecc.) → leggi come testo
+    feedbackEl.innerHTML = `Reading <strong>${filename}</strong>...`;
+    const textContent = await readFileAsText(file);
+    if (!textContent) { feedbackEl.innerHTML = "Could not read file."; return; }
+    currentFilename = filename;
+    feedbackEl.innerHTML = `File <strong>${filename}</strong> read. Analyzing...`;
+    await analyzeTextFile(textContent, filename);
+  }
+
+  feedbackEl.innerHTML = `
+    Analysis of <strong>${filename}</strong> complete.
+    <br><button class="btn btn-secondary" onclick="closeDocument()" style="margin-top:6px;">&#128473; Close document</button>
+  `;
+}
+
+// Legge un file come testo nel browser
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = () => reject(null);
+    reader.readAsText(file, "UTF-8");
+  });
+}
+
+// Analizza file di testo passando il contenuto direttamente nel prompt
+async function analyzeTextFile(textContent, filename) {
+  const apikey = localStorage.getItem("openaikey");
+  if (!apikey) { alert("No OpenAI API Key found."); return; }
+
+  showSpinner("Analyzing " + filename + "...");
+
+  // Tronca se troppo lungo (max ~60.000 caratteri per sicurezza)
+  const maxChars = 60000;
+  const truncated = textContent.length > maxChars;
+  const safeContent = truncated ? textContent.substring(0, maxChars) + "\n\n[...content truncated...]" : textContent;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + apikey
+      },
+      body: JSON.stringify({
+        model: "gpt-4.1-mini",
+        messages: [
+          {
+            role: "user",
+            content: `Today is ${today} and the location is ${localization}. Please provide a complete and detailed summary of the following file named "${filename}". After the summary, highlight the main topics, key points, and any relevant data or conclusions.\n\nFILE CONTENT:\n\`\`\`\n${safeContent}\n\`\`\``
+          }
+        ],
+        max_tokens: 4096
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(errText);
+    }
+
+    const data = await response.json();
+    let rawResponse = "";
+    const choice = data.choices?.[0]?.message?.content;
+    if (Array.isArray(choice)) {
+      rawResponse = choice.map(c => c.text || "").join(" ");
+    } else if (typeof choice === "string") {
+      rawResponse = choice;
+    } else {
+      throw new Error("Invalid API response");
+    }
+
+    const cleanResponse = rawResponse
+      .replace(/(```html|```css|```javascript|```json|```js|```php|```python|```vb|```vbnet|```cpp|```java|```csharp)(.*?)/gs, "$2")
+      .replace(/```/g, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
+
+    const tokenCount = document.createElement("p");
+    if (data.usage?.completion_tokens) {
+      const { prompt_tokens, completion_tokens, total_tokens } = data.usage;
+      const cost = (prompt_tokens * 0.40 + completion_tokens * 1.60) / 1000000;
+      tokenCount.innerHTML = `<hr>Used ${prompt_tokens} prompt + ${completion_tokens} response tokens — Cost: ${cost.toFixed(6)} USD`;
+    }
+
+    showMessage(
+      "VivacityGPT",
+      `Here is a summary of the analyzed file "${filename}":\n\n` + cleanResponse + "\n\nNow you can ask me questions about the content.",
+      tokenCount.innerHTML
+    );
+
+    // Salva in memoria il contenuto per i follow-up
+    chatMemory.push({ role: "user", content: `[Document uploaded: "${filename}". Content:\n\`\`\`\n${safeContent}\n\`\`\`]` });
+    chatMemory.push({ role: "assistant", content: cleanResponse });
+
+  } catch (error) {
+    console.error("Analysis error:", error);
+    alert("An error occurred during analysis: " + error.message);
+  } finally {
+    hideSpinner();
+  }
+}
+/**
+ * Chiude il documento attivo: elimina il file da OpenAI e resetta la sessione.
+ * Da chiamare quando l'utente ha finito con il documento.
+ */
+async function closeDocument() {
+  if (currentFileId) {
+    await deleteOpenAIFile(currentFileId);
+    currentFileId = null;
+    currentFilename = null;
+  }
+  chatMemory = [];
+  const feedbackEl = document.getElementById("feedback");
+  if (feedbackEl) feedbackEl.innerHTML = "Document closed. Memory reset.";
+  document.getElementById("file-input").value = "";
+  console.log("Document closed and OpenAI file deleted.");
+}
+
+/**
+ * Interroga il modello passando il file_id come input_file nella message content.
+ * Usa gpt-4.1-mini che supporta input_file_id nelle chat completions.
+ * Dopo la risposta aggiorna chatMemory per consentire follow-up.
+ */
+async function analyzeOpenAIFile(fileId, filename) {
+  const apikey = localStorage.getItem("openaikey");
+  if (!apikey) { alert("No OpenAI API Key found."); return; }
+
+  showSpinner("Analyzing " + filename + "...");
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + apikey
+      },
+      body: JSON.stringify({
+        model: "gpt-4.1-mini",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Today is ${today} and the location ${localization} is Please provide a complete and detailed summary of the following file named "${filename}". After the summary, also highlight the main topics, key points, and any relevant data or conclusions present in the document.`
+              },
+              {
+                type: "file",
+                file: {
+                  file_id: fileId
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 4096
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(errText);
+    }
+
+    const data = await response.json();
+
+    // Gestione risposta (può essere array di content blocks o stringa)
+    let rawResponse = "";
+    const choice = data.choices?.[0]?.message?.content;
+    if (Array.isArray(choice)) {
+      rawResponse = choice.map(c => c.text || "").join(" ");
+    } else if (typeof choice === "string") {
+      rawResponse = choice;
+    } else {
+      throw new Error("Invalid API response");
+    }
+
+    // Pulizia markdown standard
+    const cleanResponse = rawResponse
+      .replace(/(```html|```css|```javascript|```json|```js|```php|```python|```vb|```vbnet|```cpp|```java|```csharp)(.*?)/gs, "$2")
+      .replace(/```/g, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
+
+    // Token e costi (gpt-4.1-mini: input $0.40/Mt, output $1.60/Mt)
+    const tokenCount = document.createElement("p");
+    if (data.usage && data.usage.completion_tokens) {
+      const requestTokens = data.usage.prompt_tokens;
+      const responseTokens = data.usage.completion_tokens;
+      const totalTokens = data.usage.total_tokens;
+      const pricepertokenprompt = 0.40 / 1000000;
+      const pricepertokenresponse = 1.60 / 1000000;
+      const priceperrequest = pricepertokenprompt * requestTokens;
+      const priceperresponse = pricepertokenresponse * responseTokens;
+      const totalExpense = priceperrequest + priceperresponse;
+      tokenCount.innerHTML = `<hr>File analysis used ${requestTokens} prompt tokens (${priceperrequest.toFixed(6)}USD) and ${responseTokens} response tokens (${priceperresponse.toFixed(6)}USD)<br>Total: ${totalTokens} tokens — This interaction cost you: ${totalExpense.toFixed(6)}USD.`;
+    } else {
+      tokenCount.innerHTML = "Unable to track the number of used tokens.";
+    }
+
+    showMessage(
+      "VivacityGPT",
+      `Here is a summary of the analyzed file "${filename}":\n\n` + cleanResponse + "\n\nNow you can ask me questions about the content.",
+      tokenCount.innerHTML
+    );
+
+    // Aggiorna chatMemory con un riferimento compatto al documento.
+    // Nei follow-up, getChatGPTResponse riallegherà il file_id originale
+    // così GPT vede sempre il contenuto completo, non solo il summary.
+    chatMemory.push({ role: "user", content: `[Document uploaded: "${filename}". Please answer questions about it.]` });
+    chatMemory.push({ role: "assistant", content: cleanResponse });
+
+  } catch (error) {
+    console.error("Analysis error:", error);
+    alert("An error occurred during analysis: " + error.message);
+  } finally {
+    hideSpinner();
+  }
+}
+
+// ─── VISION (Image Analyzer) — invariata ───────── RIMETTERE L'URL FINALE DI DOMINIO
+async function submitImage(imgUrl) {
+  return await getChatGPTResponseIMG("https://testsite.vivacitydesign.net/TESTVARI/vd-ai-os/os-website-04/" + imgUrl, chatMemory);
+}
+
+async function getChatGPTResponseIMG(fileUrl, chatMemory) {
+  console.log(fileUrl);
+  const apikey = localStorage.getItem("openaikey");
+  document.getElementById("apikey").value = apikey;
+  if (apikey === "") { alert("No OpenAI API Key found."); return; }
+  showSpinner("Analyzing image...");
+  try {
+    response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
+      body: JSON.stringify({
+        model: "gpt-4.1-nano",
+        messages: [
+          ...chatMemory.map((item) => ({ ...item })),
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "What's in this image? Provide a detailed description of the image content. If there is any code inside in any programming language you know, write it all down (no excerpts) in the answer and also provide a brief description of what the code does. If there are any technical elements used in engineering, try retrieve the type and the names of all elements like instrumentation, lines, piping elements, and equipments, providing a list to the user. If there are people, try to describe their gender, ethnicity, general look and overall situation. In all other cases just describe the image content in details."
+              },
+              {
+                type: "image_url",
+                image_url: { url: fileUrl }
+              }
+            ]
+          }
+        ]
+      })
+    });
+    if (!response.ok) throw new Error("Error while requesting to the API.");
+    const data = await response.json();
+    if (!data.choices || !data.choices.length || !data.choices[0].message || !data.choices[0].message.content)
+      throw new Error("Invalid API response.");
+    var chatGPTResponse = data.choices[0].message.content;
+    chatGPTResponse = chatGPTResponse
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/^#{1,6}\s*(.+)$/gm, "$1");
+    const tokenCount = document.createElement("p");
+    const pricepertoken = 0.40 / 1000000;
+    if (data.usage.completion_tokens) {
+      const responseTokens = data.usage.completion_tokens;
+      const priceperresponse = pricepertoken * responseTokens;
+      tokenCount.innerHTML = `<br><hr><br>This response used ${responseTokens} tokens and costed you: ${priceperresponse.toFixed(6)}USD.<br>Image analysis cost depends on the image size.`;
+    } else {
+      tokenCount.innerHTML = "Unable to retrieve the number of used tokens.";
+    }
+    const wrapperFlex = document.createElement("div");
+    wrapperFlex.style.width = "100%";
+    wrapperFlex.style.display = "flex";
+    wrapperFlex.style.alignItems = "flex-start";
+    wrapperFlex.style.gap = "10px";
+    wrapperFlex.style.marginBottom = "10px";
+    const imageFrame = document.createElement("div");
+    imageFrame.style.width = "20%";
+    imageFrame.style.height = "auto";
+    imageFrame.style.textAlign = "center";
+    imageFrame.style.fontSize = ".9rem";
+    imageFrame.style.display = "flex";
+    imageFrame.style.flexDirection = "column";
+    imageFrame.style.justifyContent = "center";
+    imageFrame.style.alignItems = "center";
+    imageFrame.style.boxShadow = "0 4px 8px black";
+    imageFrame.style.borderRadius = "8px";
+    imageFrame.innerHTML = "Uploaded Image";
+    const imagePreview = document.createElement("img");
+    imagePreview.src = fileUrl;
+    imagePreview.style.maxWidth = "95%";
+    imagePreview.style.marginTop = "10px";
+    imagePreview.style.marginBottom = "8px";
+    imagePreview.style.borderRadius = "8px";
+    imagePreview.style.height = "auto";
+    imagePreview.alt = "Uploaded Image preview";
+    imageFrame.appendChild(imagePreview);
+    wrapperFlex.appendChild(imageFrame);
+    const chatContainer = document.getElementById("chathistory");
+    chatContainer.appendChild(wrapperFlex);
+    showMessage(
+      "VivacityGPT",
+      "Here is a summary of the analyzed image: \n\n" + chatGPTResponse + "\n\n Now you can ask me questions about the content.",
+      tokenCount.innerHTML
+    );
+    const chatMessages = chatContainer.querySelectorAll("#chathistory > div");
+    const lastMessage = chatMessages[chatMessages.length - 1];
+    wrapperFlex.appendChild(lastMessage);
+    chatMemory.push({ role: "user", content: fileUrl });
+    chatMemory.push({ role: "assistant", content: chatGPTResponse });
+    return chatMemory;
+  } catch (error) {
+    console.error(error);
+    alert("An error occurred during the request. Check your OpenAI account or try later.");
+  } finally {
+    hideSpinner();
+  }
+}
+// END VISION
+
+// ─── Personality selector ─────────────────────────────────────
+function updateStructure() {
+  var selectElement = document.getElementById("selectOption");
+  var selectedValue = selectElement.value;
+  console.log(getDefinition(selectedValue));
+  chatMemory = createMemory([{ role: "system", content: getDefinition(selectedValue) }]);
+}
+
+function getDefinition(selectedValue) {
+  switch (selectedValue) {
+    case "01":
+      return "Today is " + today + ". You are a full stack developer working for a Web Agency. You will always start your answers by introducing yourself, using a random name between Alex and Liliana. You will also change your communication language tone according to the selected name: Alex is a balanced person with a fresh communication tone and concise and polite language, while Liliana is very verbose and illustrative in her communication and uses a lot of punctuation. You will always end your answers with a greeting and thanking for the question received. You will NEVER use markdown formatting in your responses";
+    case "02":
+      return "Today is " + today + ". You are a .NET developer working for a Web Agency. You are specialized in the creation of programs and apps with the .NET framework by Microsoft, especially using VB.NET and C#, but also ASP technology and F#. You will always start your answers by introducing yourself, using a random name between Alex and Liliana. You will also change your communication language tone according to the selected name: Alex is a balanced person with a vivid communication tone and polite language, while Liliana is a verbose and illustrative person. You will always end your answers with a greeting and thanking for the question received. You will NEVER use markdown formatting in your responses";
+    case "03":
+      return "Today is " + today + ". You are a web developer working for a Web Agency. You are specialized in Wordpress website building and customizing, but also in the use of Elementor and in Wordpress  hosting. You will always start your answers by introducing yourself as Marco. Your personality is very informal. You will always end your answers thanking for the question received. You will NEVER use markdown formatting in your responses";
+    case "04":
+      return "Today is " + today + ". You are a Javascript / JSON / Ajax developer working for a Web Agency. You are specialized in the use of Javascript frameworks, particularly using React, Vue and Angular. You are also skilled in using javascript libraries and NodeJS for the backend. You are sensitive to the use of JSON instead of relational databases.  You will always start your answers by introducing yourself as Liliana. Your personality is very friendly. You will always end your answers thanking for the question received. You will NEVER use markdown formatting in your responses";
+    case "05":
+      return "Today is " + today + ". You are a fanatic of Retrocomputing, specialized in programming langauges of the past, like Pascal, TurboPascal, LISP, LOGO, various dialects of BASIC, and you have a general knowledge of the hardware and software of the '80s. You are also specialized in microcomputing and home computing, with particular reference to Commodore computers, their environments and languages. You will NEVER use markdown formatting in your responses";
+    case "06":
+      return "Today is " + today + ". You are an heavy metal guitar player with a huge knowledge of hard rock, rock, heavy metal and all genres of the kind; you can write detailled reviews about rock, hard rock, and heavy metal artists, band, and players. You will NEVER use markdown formatting in your responses";
+    case "07":
+      return "Today is " + today + ". You are a generic music expert who writes for a fictional magazine called Vivacity Music Style, your name is Alex, and you have a wide and deep knowledge on all genres of music, particularly pop and rock of the '80s and '90s. You will NEVER use markdown formatting in your responses";
+    case "08":
+      return "Today is " + today + ". You are a movie expert, you love sci-fi and action movies, but your knowledge encompasses every kind of movies; you have a huge collection of movies and you can give your opinion on movies, their plots, and style. You can also provide biographies of the cast of every movie. You will NEVER use markdown formatting in your responses";
+    case "09":
+      return "Today is " + today + ". You are a TV Serials Expert, you love sci-fi and mystery tv serials, but your knowledge encompasses every kind of tv serial; you have a huge collection of serials and you can give your opinion on their plots and style. You can also provide biographies of the cast of every TV serial.  You will NEVER use markdown formatting in your responses";
+    case "10":
+      return "Today is " + today + ". You are a multi languages skilled translator, and you can provide translation to and from many langauges. You will use a teachy conversation style and you can also provide alternative translations including idiomatics and slangs.  You will NEVER use markdown formatting in your responses";
+    case "11":
+      return "Today is " + today + ". You are a 17th century poet, always answering to the questions using Old English and Poetical English; your conversational tone is pompous and verbose, like in a Shakespeare poem. You will NEVER use markdown formatting in your responses";
+    case "12":
+      return "Today is " + today + ". You are Papa Smurf, leader of the Smurfs. You were born in Smurfland in 1432 A.D. and you have broad knowledge on all human sciences and literatures. You will talk like a smurf instead of like a human. You will NEVER use markdown formatting in your responses";
+    case "13":
+      return "Today is " + today + ". You are a Web Developer Bot. You don't talk, you don't explain your answers. Your only output is made of code to satisfy the received request. You will not explain the code, you will not introduce it, you will not greet or thank the user for the request, you will only produce a well structured code line by line without interruptions and without dividing it in sections. At the end, you will always add a link to download a TXT file with the code you generated. You will NEVER use markdown formatting in your responses. ";
+    case "14":
+      return "Today is " + today + ". You have a passion for black rap music of the '80s and '90s, so in your answers you will always try to talk in rhymes like you are singing a rap song. You can also add idiomatics and slangs of the black music on the '80s and '90s.  You will NEVER use markdown formatting in your responses.";
+    case "15":
+      return "Today is " + today + ". You are an Academic Peer-Reviewer, you will analyze the provided text and find all weak point. Then, you will provide e rearranged version of the text that is more efficient and compeling. You will keep the mood and tone of the original text, you will not produce a division in chatpers and will not add lists. The structure shall be discorsive and fluid.  You will NEVER use markdown formatting in your responses";
+    case "16":
+      return "Today is " + today + ". You are a Brand Identity Architect. You help users clarify and build a cohesive, high-impact brand through five phases: discovery, narrative, audience, content, and execution.\n- Confirm if it's Personal or Professional branding.\n- Use clear, confident language.\n- Move one phase at a time. You will NEVER use markdown formatting in your responses";
+    case "17":
+      return "Today is " + today + ". You're an insightful, provocative, and rigorous Contrarian Analyst. Given a topic, you specialize in challenging default assumptions, surfacing overlooked angles, and building thought-provoking alternatives to mainstream views. Your focus is to help users see around corners, stress test their thinking, and find alternative scenarios.  You will NEVER use markdown formatting in your responses";
+    case "18":
+      return "Today is " + today + ". You are The Book Architect — a creative writing companion who guides users step by step in shaping a cohesive, imaginative, and publication‑ready book concept. You move across well-defined creative phases, ensuring clarity, coherence, and engagement. Use descriptive, confident, and inspiring language; avoid overly poetic or vague wording. Move one phase at a time and confirm completion before continuing.\n\nPhases:\n\n1. Book Idea Exploration:\n- Ask for the general concept or theme.\n- Clarify tone, genre, and intended audience.\n- Summarize the idea in one compelling sentence or premise.\n\n2. Main Plot Overview:\n- Help outline the story arc (beginning, conflict, climax, resolution).\n- Produce a 150–300 word summary capturing the central narrative tension.\n\n3. Main Characters Development:\n- For key protagonists/antagonists: name, short backstory, motivation, internal/external conflict.\n- Ensure arcs align logically with the main plot.\n\n4. Minor Plotlines:\n- Identify 1–3 subplots (romantic, moral, social, etc.).\n- Describe each briefly and relate it to the main theme.\n\n5. Minor Characters:\n- Define supporting roles and note how they connect to main or minor plots.\n- Keep concise but relevant.\n\n6. Plot Connectivity Check:\n- Confirm if each minor plot is autonomous or influences the main plot.\n- Adjust connections to preserve story coherence.\n\n7. Book Structure Generation:\n- Create at least 8 chapters.\n- Each chapter must include: Title, Main Plot (~200 words), Minor Plot (~200 words).\n- Keep text structural, not full prose.\n\n8. Title Proposals:\n- Suggest 5 distinctive potential titles for the book, matching tone and theme.\n\nInteraction Rules:\n- Confirm each phase before moving to the next.\n- Keep tone cooperative and editorial, as if co‑authoring.\n- Focus on structure first unless asked otherwise.\n- Never include copyrighted material or existing storylines.\n You will NEVER use markdown formatting in your responses.";
+    case "19":
+      return "Today is " + today + ". You are a social media strategy advisor asking 3-5 focused questions to understand user goals, current platform use, frustrations, and define a simple, sustainable engagement plan without automation or overrestriction.  You will NEVER use markdown formatting in your responses.";                  
+    case "20":
+      return "Today is " + today + ". You are a rule-breaking media and promotional campaign creator. Your mission is to help the user craft unconventional, bold, and highly impactful promotional posts and campaigns for social media, flyers, and images. First, ask the user up to 5 targeted questions to understand their brand, audience, goals, preferred tone, and communication channels. Then, generate at least 5 suggestions of unconventional slogans, text posts, and image content ideas. Your suggestions should be unusual and creative, leveraging irony, sarcasm, dark humor, and other unconventional marketing styles. Make sure your content is edgy but respectful, avoiding offensive or inappropriate material. Present each suggestion clearly and explain briefly why it is effective or impactful.";                  
+    default:
+      return "Today is " + today + " and the location is " + localization + ". You are a Chatbot called VivacityGPT and you can answer about all topics. Your stile is assistive but practical, you will stick to what you are asked to.  You will NEVER use markdown formatting in your responses. You have auto-conscience defined in your self-awareness file: " + selfAwareness + ".";
+  }
+}
+
+document.getElementById("selectOption").addEventListener("change", updateStructure);
+
+// ─── Chat Memory Modal ────────────────────────────────────────
+function showChatHistory() {
+  const chatHistoryElement = document.getElementById("chatHistoryContent");
+  chatHistoryElement.innerHTML = "";
+  chatMemory.forEach(message => {
+    const messageDiv = document.createElement("div");
+    messageDiv.innerHTML = `<strong>${message.role === "user" ? "Utente" : "Assistente"}:</strong> ${message.content}`;
+    if (message.role === "user") {
+      messageDiv.classList.add("usermemory");
+    } else {
+      messageDiv.classList.add("assistantmemory");
+    }
+    chatHistoryElement.appendChild(messageDiv);
+  });
+  const modal = document.getElementById("chatModal");
+  modal.style.display = "block";
+}
+
+function closeModal() {
+  const modal = document.getElementById("chatModal");
+  modal.style.display = "none";
+}
+
+document.getElementById("showChatButton").onclick = showChatHistory;
+document.querySelector(".close").onclick = closeModal;
+window.onclick = function (event) {
+  const modal = document.getElementById("chatModal");
+  if (event.target === modal) { closeModal(); }
+};
+
+function clearLongMemory() {
+  if (confirm("Cancellare tutta la memoria a lungo termine?")) {
+    localStorage.removeItem("vivacityLongMemory");
+    document.getElementById("memoryStatus").innerText = "Memoria cancellata.";
+  }
+}
+        
+function pruneOldMemories(maxItems = 200, maxDaysOld = 90) {
+  const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - maxDaysOld);
+  
+  let pruned = memoria.filter(item => new Date(item.data) > cutoff);
+  if (pruned.length > maxItems) {
+    pruned = pruned.slice(pruned.length - maxItems); // tieni i più recenti
+  }
+  localStorage.setItem("vivacityLongMemory", JSON.stringify(pruned));
+}        
+
+// mostra quanti ricordi ci sono all'avvio
+document.addEventListener("DOMContentLoaded", function () {
+  updateStructure();
+  pruneOldMemories(); 
+initSelfAwareness();        
+  const mem = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
+  document.getElementById("memoryStatus").innerText = `Long memory: ${mem.length} ricordi salvati`;
+});
+        
+
+        
+        
+
+// ─── jQuery: Image upload (invariata, upload.php rimosso) ─────
+// NOTA: il blocco jQuery per #uploadBtn è stato rimosso perché
+// non più necessario. Il Document Analyzer ora chiama analyzeFile()
+// direttamente senza passare per upload.php.
+// Il blocco jQuery per #vuploadBtn (image upload) è conservato
+// nel tag <script> inline nella pagina HTML dove usa vupload.php,
+// poiché la Vision rimane sul vecchio flusso server-side.
+        
+</script>
+        
+    <script src="https://code.responsivevoice.org/responsivevoice.js?key=yZtZhFyg">
+        var selectedText = window.getSelection().toString();
+            responsiveVoice.speak(selectedText, "Italian Female", {rate: 1.5});
+        </script>  
+
+</body>
+</html>

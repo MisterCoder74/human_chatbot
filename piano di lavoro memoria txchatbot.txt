@@ -1,0 +1,86 @@
+1. Funzionamento attuale del sistema di memoria a breve e lungo termine
+
+- *Memoria a breve termine*
+Viene mantenuto uno storico delle conversazioni recenti in memoria volatile (variabile `chatMemory` in JavaScript). 
+Questo storico contiene i messaggi scambiati durante la sessione corrente e viene inviato al modello ad ogni richiesta 
+per mantenere il contesto conversazionale immediato.
+
+- *Memoria a lungo termine*
+Le conversazioni ritenute rilevanti vengono salvate come embedding semantici in `localStorage` del browser, con data e testo. 
+Quando arriva una nuova domanda, il sistema genera un embedding della query, calcola la similarità con gli embedding memorizzati e recupera
+ i top 3 ricordi da integrare nel prompt, arricchendo così il contesto. 
+Esiste un meccanismo di pruning che limita le memorie a 200 elementi e 90 giorni di anzianità, e una funzione di reset manuale.
+
+---
+
+2. Soluzioni possibili accordate per aumentare il contesto di memoria a breve e lungo termine
+
+- *Memoria a breve termine*
+Potenziare la gestione dello storico con meccanismi di compressione e sintesi per mantenere contesti lunghi senza superare i limiti di token
+ durante le conversazioni molto estese.
+
+- *Memoria a lungo termine*
+- Sostituire il salvataggio in `localStorage` con file JSON persistenti lato server, garantendo capacità molto maggiori e durata di memoria estesa
+ (es. 1500+ ricordi, 365 giorni).
+- Implementare una API server per la gestione efficiente della memoria, con endpoints per aggiungere, cercare e pulire i ricordi.
+- Introdurre ponderazione composita tra similarità semantica e recenza temporale nella ricerca dei ricordi.
+- Possibilità di riassumere o raggruppare ricordi per mantenere il prompt snello e rilevante.
+- Differenziare la memoria temporanea per scambi non ancora valutati da quella permanente.
+
+---
+
+3. Obiettivo da ottenere
+
+- Creare un chatbot con capacità di memoria "umana", cioè che accumuli e gestisca i ricordi nel tempo, mantenendo un contesto utile, 
+coerente e aggiornato per oltre un anno.
+- Consentire un filtro manuale dell’importanza degli scambi, evitando sovraccarichi di memoria e migliorando la qualità del contesto.
+- Scalabilità e gestione robusta della memoria tramite server dedicato e API, garantendo performance e persistenza.
+- Interfaccia utente semplice e intuitiva per selezionare quali scambi memorizzare definitivamente.
+
+---
+
+4. Struttura della modifica dell'interfaccia delle domande/risposte per decidere cosa memorizzare
+
+- Per ogni coppia domanda/risposta mostrata, aggiungere un componente UI (es. checkbox o bottone “Salva”) accanto alla risposta del chatbot.
+- Finché non viene selezionato il salvataggio, lo scambio non viene aggiunto alla memoria a lungo termine.
+- È possibile implementare anche una raccolta temporanea di scambi non salvati, da rivedere in un secondo momento 
+(es. tramite una sezione “Revisiona memoria temporanea”).
+- Al click o selezione, la funzione di salvataggio chiamerà l’API server per archiviare il ricordo in memoria persistente.
+- Aggiornare la UI per fornire feedback visivo dello stato di memorizzazione di ciascuno scambio.
+
+---
+
+5. Struttura minimale in PHP/JSON per gestire due files di memoria
+
+- *File JSON per memoria a lungo termine (memoria_salvata.json)*
+Struttura array di oggetti con campi:
+
+[
+{
+"id": "unique_id",
+"request": "testo domanda",
+"response": "testo risposta",
+"embedding": [/* vettore numerico */],
+"timestamp": "YYYY-MM-DD HH:MM:SS"
+},
+...
+]
+
+
+- *File JSON per memoria temporanea (memoria_temporanea.json)*
+Struttura simile ma contiene scambi non ancora selezionati per la memorizzazione definitiva, utili a successiva revisione.
+
+- *Endpoint PHP essenziali:*
+
+- `addMemory.php`
+Riceve via POST i dati di uno scambio (request, response, embedding, timestamp), li scrive in uno dei due file JSON a seconda del flag “temp” o “permanente”.
+
+- `searchMemory.php`
+Riceve query via POST, calcola embedding lato server (o riceve embedding calcolato client-side), esegue ricerca per similarità e ritorna topK risultati in JSON.
+
+- `pruneMemory.php` (opzionale)
+Pulisce i file JSON rimuovendo ricordi obsoleti o eccedenti numero massimo.
+
+- I file JSON devono essere letti e scritti in modo concorrente sicuro (sempre con lock file o meccanismo simile per evitare corruzione).
+
+---
