@@ -850,6 +850,45 @@ function createMemory(messages) {
   return memory;
 }
         
+// ============================================================
+// MEMORY CONFIGURATION (Phase 4 - Advanced Features)
+// ============================================================
+// 
+// This configuration object controls the advanced memory management features:
+//
+// 1. COMPOSITE SCORING (4.1 - Ponderazione composita)
+//    - Combines semantic similarity with temporal recency
+//    - Formula: finalScore = (similarity * SIMILARITY_WEIGHT) + (recency * RECENCY_WEIGHT)
+//    - Recency uses exponential decay over MAX_DAYS period
+//    - Can be disabled with ENABLE_COMPOSITE_SCORING = false (falls back to similarity-only)
+//
+// 2. PARAMETERIZED PRUNING (4.2 - Configurazione pruning parametrizzabile)
+//    - MAX_MEMORIES: Maximum number of memories to retain (default: 1500)
+//    - MAX_DAYS: Maximum retention period in days (default: 365)
+//    - SIMILARITY_THRESHOLD: Minimum composite score to include in results (default: 0.5)
+//
+// RETROCOMPATIBILITY: Set ENABLE_COMPOSITE_SCORING = false to use original behavior
+// Runtime changes: Use updateMemoryConfig({...}) to modify settings dynamically
+// View stats: Use displayMemoryStats() to see memory distribution and configuration
+//
+const MEMORY_CONFIG = {
+  MAX_MEMORIES: 1500,        // Maximum number of memories to keep
+  MAX_DAYS: 365,             // Maximum retention in days
+  SIMILARITY_THRESHOLD: 0.5,  // Minimum similarity score to include memory
+  SIMILARITY_WEIGHT: 0.7,     // Weight for semantic similarity (0-1)
+  RECENCY_WEIGHT: 0.3,        // Weight for temporal recency (0-1)
+  ENABLE_COMPOSITE_SCORING: true // Toggle for advanced weighting
+};
+
+// Ensure weights sum to 1
+if (Math.abs(MEMORY_CONFIG.SIMILARITY_WEIGHT + MEMORY_CONFIG.RECENCY_WEIGHT - 1) > 0.001) {
+  console.warn("Memory weights don't sum to 1. Normalizing...");
+  const total = MEMORY_CONFIG.SIMILARITY_WEIGHT + MEMORY_CONFIG.RECENCY_WEIGHT;
+  MEMORY_CONFIG.SIMILARITY_WEIGHT /= total;
+  MEMORY_CONFIG.RECENCY_WEIGHT /= total;
+}
+
+// Calculate cosine similarity between two embedding vectors
 function cosineSimilarity(a, b) {
   const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
   const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
@@ -857,6 +896,119 @@ function cosineSimilarity(a, b) {
   return dot / (normA * normB);
 }
 
+// Calculate recency score using exponential decay (Phase 4 - 4.1)
+// Returns 1.0 for new memories, decaying to 0.01 at maxDays
+function calculateRecencyScore(memoryDate, maxDays = MEMORY_CONFIG.MAX_DAYS) {
+  const now = new Date();
+  const memoryTime = new Date(memoryDate);
+  const ageInMs = now - memoryTime;
+  const maxAgeInMs = maxDays * 24 * 60 * 60 * 1000;
+
+  if (ageInMs < 0) return 1; // Future date, max score
+  if (ageInMs >= maxAgeInMs) return 0; // Too old, min score
+
+  // Exponential decay: newer memories have higher scores
+  // Score = e^(-k * age), where k controls decay rate
+  const k = -Math.log(0.01) / maxAgeInMs; // Ensures 1% score at max age
+  return Math.exp(-k * ageInMs);
+}
+
+// Calculate composite score combining similarity and recency (Phase 4 - 4.1)
+// If composite scoring is disabled, returns similarity score only (retrocompatible)
+function calculateCompositeScore(similarityScore, recencyScore) {
+  if (!MEMORY_CONFIG.ENABLE_COMPOSITE_SCORING) {
+    return similarityScore;
+  }
+  return (similarityScore * MEMORY_CONFIG.SIMILARITY_WEIGHT) + 
+         (recencyScore * MEMORY_CONFIG.RECENCY_WEIGHT);
+}
+
+// Get memory statistics including age distribution (Phase 4 - Utility)
+function getMemoryStats() {
+  const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
+  const now = new Date();
+  
+  let memoryByAge = {
+    recent: 0,    // < 7 days
+    medium: 0,    // 7-30 days
+    old: 0,       // 30-90 days
+    veryOld: 0    // > 90 days
+  };
+  
+  memoria.forEach(item => {
+    const ageMs = now - new Date(item.data);
+    const ageDays = ageMs / (24 * 60 * 60 * 1000);
+    
+    if (ageDays < 7) {
+      memoryByAge.recent++;
+    } else if (ageDays < 30) {
+      memoryByAge.medium++;
+    } else if (ageDays < 90) {
+      memoryByAge.old++;
+    } else {
+      memoryByAge.veryOld++;
+    }
+  });
+  
+  return {
+    total: memoria.length,
+    maxAllowed: MEMORY_CONFIG.MAX_MEMORIES,
+    maxDays: MEMORY_CONFIG.MAX_DAYS,
+    compositeScoring: MEMORY_CONFIG.ENABLE_COMPOSITE_SCORING,
+    similarityWeight: MEMORY_CONFIG.SIMILARITY_WEIGHT,
+    recencyWeight: MEMORY_CONFIG.RECENCY_WEIGHT,
+    threshold: MEMORY_CONFIG.SIMILARITY_THRESHOLD,
+    byAge: memoryByAge
+  };
+}
+
+// Display memory statistics in console (Phase 4 - Utility)
+function displayMemoryStats() {
+  const stats = getMemoryStats();
+  console.log("=== MEMORY STATS ===");
+  console.log(`Total memories: ${stats.total} / ${stats.maxAllowed}`);
+  console.log(`Retention period: ${stats.maxDays} days`);
+  console.log(`Composite scoring: ${stats.compositeScoring ? 'ENABLED' : 'DISABLED'}`);
+  if (stats.compositeScoring) {
+    console.log(`  - Similarity weight: ${stats.similarityWeight}`);
+    console.log(`  - Recency weight: ${stats.recencyWeight}`);
+  }
+  console.log(`Similarity threshold: ${stats.threshold}`);
+  console.log(`Distribution by age:`);
+  console.log(`  - Recent (<7d): ${stats.byAge.recent}`);
+  console.log(`  - Medium (7-30d): ${stats.byAge.medium}`);
+  console.log(`  - Old (30-90d): ${stats.byAge.old}`);
+  console.log(`  - Very old (>90d): ${stats.byAge.veryOld}`);
+  console.log("===================");
+  return stats;
+}
+
+// Update memory configuration at runtime (Phase 4 - Utility)
+// Automatically normalizes weights if they don't sum to 1
+function updateMemoryConfig(newConfig) {
+  Object.assign(MEMORY_CONFIG, newConfig);
+  
+  // Ensure weights sum to 1 if changed
+  if (newConfig.SIMILARITY_WEIGHT !== undefined || newConfig.RECENCY_WEIGHT !== undefined) {
+    if (Math.abs(MEMORY_CONFIG.SIMILARITY_WEIGHT + MEMORY_CONFIG.RECENCY_WEIGHT - 1) > 0.001) {
+      console.warn("Memory weights don't sum to 1. Normalizing...");
+      const total = MEMORY_CONFIG.SIMILARITY_WEIGHT + MEMORY_CONFIG.RECENCY_WEIGHT;
+      MEMORY_CONFIG.SIMILARITY_WEIGHT /= total;
+      MEMORY_CONFIG.RECENCY_WEIGHT /= total;
+    }
+  }
+  
+  console.log("Memory configuration updated:", MEMORY_CONFIG);
+  
+  // Update UI display
+  const mem = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
+  document.getElementById("memoryStatus").innerText = 
+    `Long memory: ${mem.length} ricordi salvati (max ${MEMORY_CONFIG.MAX_MEMORIES}, ${MEMORY_CONFIG.MAX_DAYS} giorni retention)`;
+  
+  return MEMORY_CONFIG;
+}
+
+// Save conversation to long-term memory with embedding (uses config from Phase 4)
 async function saveToLongMemory(userInput, botResponse) {
   const apikey = localStorage.getItem("openaikey");
   const testo = `Utente: ${userInput}\nBot: ${botResponse}`;
@@ -874,6 +1026,8 @@ async function saveToLongMemory(userInput, botResponse) {
   } catch (e) { console.error("saveToLongMemory error:", e); }
 }
 
+// Search long-term memory using composite scoring (Phase 4 - 4.1)
+// Combines semantic similarity and temporal recency with configurable weights
 async function searchLongMemory(query, topK = 3) {
   const apikey = localStorage.getItem("openaikey");
   const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
@@ -887,10 +1041,27 @@ async function searchLongMemory(query, topK = 3) {
     const data = await res.json();
     const queryVettore = data.data[0].embedding;
     const risultati = memoria
-      .map(item => ({ testo: item.testo, data: item.data, score: cosineSimilarity(queryVettore, item.vettore) }))
-      .sort((a, b) => b.score - a.score)
+      .map(item => {
+        const similarityScore = cosineSimilarity(queryVettore, item.vettore);
+        const recencyScore = calculateRecencyScore(item.data);
+        const compositeScore = calculateCompositeScore(similarityScore, recencyScore);
+        return {
+          testo: item.testo,
+          data: item.data,
+          similarityScore,
+          recencyScore,
+          compositeScore
+        };
+      })
+      .filter(item => item.compositeScore >= MEMORY_CONFIG.SIMILARITY_THRESHOLD)
+      .sort((a, b) => b.compositeScore - a.compositeScore)
       .slice(0, topK);
-    if (risultati[0].score < 0.5) return ""; // soglia: ignora ricordi poco rilevanti
+    
+    if (risultati.length === 0) return "";
+    
+    console.log(`Found ${risultati.length} relevant memories. Top scores:`, 
+      risultati.map(r => ({ composite: r.compositeScore.toFixed(3), similarity: r.similarityScore.toFixed(3), recency: r.recencyScore.toFixed(3) })));
+    
     return "Ricordi rilevanti da sessioni passate:\n" + risultati.map(r => `[${r.data}] ${r.testo}`).join("\n---\n");
           
   } catch (e) { console.error("searchLongMemory error:", e); return ""; }
@@ -1791,30 +1962,73 @@ document.getElementById("apiKeyModal").onclick = function(event) {
 };
 
 function clearLongMemory() {
-  if (confirm("Cancellare tutta la memoria a lungo termine?")) {
+  const stats = getMemoryStats();
+  if (confirm(`Cancellare tutta la memoria a lungo termine?\n\nStai per eliminare ${stats.total} ricordi.`)) {
     localStorage.removeItem("vivacityLongMemory");
-    document.getElementById("memoryStatus").innerText = "Memoria cancellata.";
+    document.getElementById("memoryStatus").innerText = 
+      `Memoria cancellata. (max ${MEMORY_CONFIG.MAX_MEMORIES}, ${MEMORY_CONFIG.MAX_DAYS} giorni retention)`;
+    console.log("Long memory cleared by user.");
   }
 }
         
-function pruneOldMemories(maxItems = 200, maxDaysOld = 90) {
+// Prune old memories using configurable parameters (Phase 4 - 4.2)
+// Removes memories older than maxDaysOld and limits total count to maxItems
+function pruneOldMemories(maxItems = MEMORY_CONFIG.MAX_MEMORIES, maxDaysOld = MEMORY_CONFIG.MAX_DAYS) {
   const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - maxDaysOld);
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - (maxDaysOld * 24 * 60 * 60 * 1000));
   
+  const originalCount = memoria.length;
+  
+  // Filter by time first (remove old memories)
   let pruned = memoria.filter(item => new Date(item.data) > cutoff);
+  const timeFilteredCount = pruned.length;
+  
+  // Then apply count limit (remove oldest beyond maxItems)
   if (pruned.length > maxItems) {
     pruned = pruned.slice(pruned.length - maxItems);
   }
+  
+  const finalCount = pruned.length;
+  
   localStorage.setItem("vivacityLongMemory", JSON.stringify(pruned));
+  
+  console.log(`Memory pruning complete: ${originalCount} -> ${finalCount} memories`);
+  console.log(`  Removed ${originalCount - timeFilteredCount} old memories (> ${maxDaysOld} days)`);
+  console.log(`  Removed ${timeFilteredCount - finalCount} excess memories (> ${maxItems} total)`);
+  
+  return {
+    original: originalCount,
+    timeFiltered: timeFilteredCount,
+    final: finalCount,
+    removedByTime: originalCount - timeFilteredCount,
+    removedByCount: timeFilteredCount - finalCount
+  };
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   updateStructure();
-  pruneOldMemories();        
-  initSelfAwareness();        
+  
+  // Phase 4: Initialize memory configuration
+  console.log("=== MEMORY SYSTEM INITIALIZATION ===");
+  console.log("Phase 4 Features: Composite Scoring & Advanced Pruning");
+  console.log("Configuration:", MEMORY_CONFIG);
+  
+  const pruneResult = pruneOldMemories();
+  console.log("Pruning result:", pruneResult);
+  
+  initSelfAwareness();
+  
   const mem = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
-  document.getElementById("memoryStatus").innerText = `Long memory: ${mem.length} ricordi salvati`;
+  document.getElementById("memoryStatus").innerText = 
+    `Long memory: ${mem.length} ricordi salvati (max ${MEMORY_CONFIG.MAX_MEMORIES}, ${MEMORY_CONFIG.MAX_DAYS} giorni retention)`;
+  
+  // Log initial memory stats
+  displayMemoryStats();
+  
+  console.log("You can use displayMemoryStats() to view memory statistics anytime.");
+  console.log("You can use updateMemoryConfig({...}) to change settings at runtime.");
+  console.log("Example: updateMemoryConfig({ SIMILARITY_WEIGHT: 0.8, RECENCY_WEIGHT: 0.2 })");
 });
 </script>
         
