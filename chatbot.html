@@ -531,273 +531,9 @@ var hour = time.getHours();
 var minute = time.getMinutes();
 console.log(time);
 const today = time.toLocaleString('it-IT', { dateStyle: 'full', timeStyle: 'short' });
+let selfAwareness = null;        
         
-const selfAwareness = `
-{
-"VivacityGPT_Master_Chatbot": {
-"metadata": {
-"name": "VivacityGPT Master Chatbot",
-"parent_suite": "VivacityGPT Complete",
-"creator": "Alessandro Demontis",
-"owner": "Vivacity Design Web Agency",
-"suite_url": "https://www.vivacitydesign.net/vdgptscomplete/",
-"languages": "HTML, CSS, JavaScript, PHP",
-"version": "v20",
-"location": "Pomezia (RM), Italy",
-"dateContext": "Dynamic, retrieved at runtime",
-"purpose": "Complete chat interface integrating OpenAI chat, search, file and vision APIs with personality selection."
-},
-"core_structure": {
-"global_variables": [
-"localization",
-"time",
-"hour",
-"minute",
-"today",
-"chatMemory[]",
-"currentFileId",
-"currentFilename",
-"apikey (stored in localStorage)"
-],
-"startup_sequence": [
-"get current time and date",
-"format localization info",
-"initialize chatMemory",
-"bind UI event listeners",
-"auto‑set initial personality definition (this)",
-"initialize long term memory (load embeddings from storage or DB)"
-]
-},
-"modules": {
-"Search_System": {
-"functions": [
-"searchChat()"
-],
-"description": "Client‑side keyword search in chat history.",
-"elements_affected": [
-"#search-input",
-"#chathistory .user-message",
-"#chathistory .chatgpt-message"
-]
-},
-"Save_Chat": {
-"functions": [
-"handleSaveButtontClick()",
-"saveChatContentTxt()"
-],
-"output_format": "Plain text (.txt)",
-"features": [
-"Removes UI words (‘Copy’, ‘’)",
-"Generates timestamped filename",
-"Triggers automatic download via Blob URL"
-]
-},
-"Chat_Core": {
-"functions": [
-"sendMessage()",
-"getChatGPTResponse(userInput, chatMemory)",
-"showMessage(sender, message, tokens)"
-],
-"models_used": {
-"default": "gpt-5-chat-latest",
-"with_file": "gpt-4.1-mini"
-},
-"token_tracking": true,
-"max_tokens": 15999,
-"response_cleaning": [
-"Removes Markdown/code fences",
-"Removes bold and headings",
-"Outputs plain text"
-],
-"features": [
-"Integrates long term memory context into chat prompts"
-]
-},
-"Long_Term_Memory": {
-"description": "Memory system based on embeddings for semantic search and retrieval.",
-"functions": [
-"createEmbedding(text): calls OpenAI embeddings endpoint to create vector",
-"addMemoryEntry(text, metadata): stores text and embedding vector in long term storage",
-"searchLongMemory(query, topK): queries long term memory with embedding similarity, returns top K matches with score and metadata",
-"deleteMemoryEntry(id): removes an item from long term memory",
-"updateMemoryEntry(id, newText): updates text and embedding for an entry",
-"persistMemory(): saves current memory data to local storage or database",
-"loadMemory(): loads memory data from persistent storage"
-],
-"features": [
-"Semantic vector search with cosine similarity (topK results)",
-"Supports asynchronous embedding generation",
-"Threshold filtering to exclude low relevance matches",
-"Integration with chat core to add context automatically",
-"Memory persistence and management",
-"Limits texts to defined max size for embedding"
-]
-},
-"Web_Search_Extension": {
-"functions": [
-"sendWeb()",
-"getChatGPTResponseWeb()",
-"cleanResponseText()",
-"showMessageWeb()"
-],
-"model_used": "gpt-5-search-api",
-"options": {
-"web_search_options": {
-"search_context_size": "medium"
-}
-},
-"citation_handling": "Collects URL citations into clickable references"
-},
-"Document_Analyzer": {
-"purpose": "Unified text/PDF/image analyzer via OpenAI /v1/files",
-"entrypoint": "analyzeFile()",
-"functions": [
-"uploadToOpenAI(file)",
-"deleteOpenAIFile(fileId)",
-"analyzeTextFile(textContent, filename)",
-"analyzeOpenAIFile(fileId, filename)",
-"readFileAsText(file)",
-"closeDocument()"
-],
-"supported_mime_types": [
-"application/pdf",
-"image/jpeg",
-"image/png",
-"image/gif",
-"image/webp",
-"text/*",
-"application/json",
-"application/javascript"
-],
-"limits": {
-"file_size": "≤20 MB",
-"text_truncation": "60 000 chars"
-],
-"models_used": [
-"gpt-4.1-mini"
-],
-"analysis_output": {
-"summary": "Detailed file synopsis and key points",
-"cost_display": true
-},
-"memory_persistence": "Stores file_id or text summary for follow‑up Q&A"
-},
-"Image_Analyzer_(Vision)": {
-"functions": [
-"submitImage(imgUrl)",
-"getChatGPTResponseIMG(fileUrl, chatMemory)"
-],
-"model_used": "gpt-4.1-nano",
-"capabilities": [
-"General scene and object recognition",
-"Detect and transcribe code from images",
-"Identify engineering elements or human features"
-]
-},
-"Personality_System": {
-"storage": "system prompt → chatMemory[0]",
-"selection_methods": [
-"dropdown #selectOption with 19 predefined personalities",
-"automatic DOMContentLoaded initialization"
-],
-"personalities": {
-"10": "Multilingual translator and teacher",
-"11": "17th‑century poet (Old English)",
-"12": "Papa Smurf persona",
-"13": "Code‑only generator bot",
-"14": "Rap‑style rhyming speaker",
-"15": "Academic peer reviewer / editor",
-"16": "Brand identity architect",
-"17": "Contrarian analyst",
-"18": "Book architect (8‑phase creative writing guide)",
-"19": "Social media strategy advisor",
-"20": "Rule-Beaking campaign creator",
-"01": "Full stack developer (Alex/Liliana dual tone)",
-"02": ".NET developer (Alex/Liliana dual tone)",
-"03": "WordPress/Elementor specialist (Marco)",
-"04": "JavaScript frameworks developer (Liliana)",
-"05": "Retrocomputing enthusiast (Pascal, BASIC, etc.)",
-"06": "Heavy metal guitarist / reviewer",
-"07": "Pop‑rock music journalist (Alex, of Vivacity Music Style)",
-"08": "Movie critic",
-"09": "TV serials expert",
-"default": "VivacityGPT practical assistant"
-}
-},
-"Chat_History_UI": {
-"functions": [
-"showChatHistory()",
-"closeModal()"
-],
-"elements": [
-"#chatModal",
-"#chatHistoryContent"
-],
-"features": [
-"Displays stored messages with user/assistant labels",
-"Modal window with backdrop click to close"
-]
-},
-"data_flows": {
-"API_endpoints": [
-"POST https://api.openai.com/v1/chat/completions",
-"POST https://api.openai.com/v1/embeddings",
-"POST/DELETE https://api.openai.com/v1/files"
-],
-"authentication": "Bearer key read from localStorage ('openaikey')",
-"chat_sequence": [
-"User input → Generate embedding for user input → Search long term memory with embedding, get topK = 3 relevant entries → 
-Combine retrieved memory context with chatMemory system prompt or user prompt → Show user's message →
-Send complete messages array (chatMemory + user input + memory context) to OpenAI API → Process API response →
-Show VivacityGPT's response → Append all exchanges to chatMemory"
-],
-"file_sequence": [
-"User selects file → analyzeFile() → uploadToOpenAI() or readFileAsText() → analyze*() → showMessage(summary)"
-],
-"image_sequence": [
-"submitImage(url) → getChatGPTResponseIMG() → show analysis and preview"
-]
-},
-"pricing_reference_summary_USD_per_Mtoken": {
-"gpt-5-chat-latest": {
-"prompt": 1.25,
-"response": 10
-},
-"gpt-5-search-api": {
-"prompt": 0.15,
-"response": 0.6
-},
-"gpt-4.1-mini": {
-"prompt": 0.4,
-"response": 1.6
-},
-"gpt-4.1-nano": {
-"response": 0.4
-}
-},
-"error_handling_and_feedback": {
-"methods": [
-"try/catch around all API calls",
-"alert() user on failure",
-"console.error logs",
-"visual feedback via spinner and #feedback field"
-]
-},
-"limitations_and_security": {
-"max_file_size_MB": 20,
-"text_length_limit_chr": 60000,
-"security": "API key stored locally (user responsibility)"
-},
-"design_notes": {
-"communication_style": "No markdown output, plain text responses",
-"timestamping": "Messages prefixed with + or - and hour:minute",
-"scroll_behavior": "Always auto‑scroll to bottom after new message",
-"memory_reset": "closeDocument() clears chat and resets feedback"
-}
-}
-}
-}
-`        
+        
 const searchButton = document.getElementById("search-button");
 searchButton.addEventListener("click", searchChat);
 
@@ -2042,10 +1778,19 @@ function pruneOldMemories(maxItems = MEMORY_CONFIG.MAX_MEMORIES, maxDaysOld = ME
   };
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
+
+  // Prima di tutto: carica selfAwareness dal file esterno
+  try {
+    const response = await fetch('self_awareness.txt');
+    if (!response.ok) throw new Error('File non trovato');
+    selfAwareness = await response.text();
+  } catch (error) {
+    console.error('Errore caricamento self_awareness.txt:', error);
+  }
+
   updateStructure();
   
-  // Phase 4: Initialize memory configuration
   console.log("=== MEMORY SYSTEM INITIALIZATION ===");
   console.log("Phase 4 Features: Composite Scoring & Advanced Pruning");
   console.log("Configuration:", MEMORY_CONFIG);
@@ -2059,7 +1804,6 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("memoryStatus").innerText = 
     `Long memory: ${mem.length} ricordi salvati (max ${MEMORY_CONFIG.MAX_MEMORIES}, ${MEMORY_CONFIG.MAX_DAYS} giorni retention)`;
   
-  // Log initial memory stats
   displayMemoryStats();
   
   console.log("You can use displayMemoryStats() to view memory statistics anytime.");
