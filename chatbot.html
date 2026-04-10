@@ -240,7 +240,6 @@ details[open] summary::after { transform: rotate(90deg); }
 }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
 
-/* ── MODAL (preserved for JS) ── */
 .modal {
   display: none; position: fixed; inset: 0; z-index: 2000;
   background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
@@ -299,7 +298,6 @@ details[open] summary::after { transform: rotate(90deg); }
 
 <div class="page">
 
-  <!-- HEADER -->
   <div class="page-header">
     <div class="icon-badge">🤖</div>
     <div class="page-header-text">
@@ -312,13 +310,10 @@ details[open] summary::after { transform: rotate(90deg); }
 
   <hr class="divider">
 
-  <!-- MAIN -->
   <div class="main-cols">
 
-    <!-- SIDEBAR -->
     <aside id="menu" class="sidebar">
         <input type="password" id="apikey" placeholder="API key loaded from localStorage…" readonly style="margin-bottom:10px;">
-      <!-- Document Analyzer -->
       <details>
         <summary>📋 Document Analyzer</summary>
         <div class="details-body" id="operations">
@@ -328,7 +323,6 @@ details[open] summary::after { transform: rotate(90deg); }
         </div>
       </details>
 
-      <!-- Image Analyzer -->
       <details>
         <summary>📊 Image Analyzer</summary>
         <div class="details-body" id="voperations">
@@ -343,7 +337,6 @@ details[open] summary::after { transform: rotate(90deg); }
         </div>
       </details>
 
-      <!-- Vision jQuery (preserved) -->
       <script>
         $(document).ready(function () {
           $('#vuploadBtn').click(function (e) {
@@ -370,9 +363,9 @@ details[open] summary::after { transform: rotate(90deg); }
 
       <div class="sidebar-divider"></div>
 
-      <!-- Memory & Export -->
       <div class="sidebar-btn-group">
         <button class="btn btn-sm" id="showChatButton">📂 Show Memory</button>
+        <button class="btn btn-sm" id="apikeyBtn">🔑 API Key</button>
         <button class="btn btn-sm" onclick="clearLongMemory()">🗑 Clear Long Memory</button>
         <small id="memoryStatus"></small>
         <button class="btn btn-sm" id="savetxt">💾 Export Chat</button>
@@ -384,7 +377,6 @@ details[open] summary::after { transform: rotate(90deg); }
 
       <div class="sidebar-divider"></div>
 
-      <!-- Personality Select -->
       <div>
         <span class="field-label">Personality</span>
         <select id="selectOption">
@@ -415,7 +407,6 @@ details[open] summary::after { transform: rotate(90deg); }
         </select>
       </div>
 
-      <!-- Search -->
       <div>
         <span class="field-label">Search in Chats</span>
         <div class="search-row">
@@ -426,10 +417,8 @@ details[open] summary::after { transform: rotate(90deg); }
 
     </aside>
 
-    <!-- CHAT COLUMN -->
     <div class="chat-col">
 
-      <!-- Input card -->
       <div class="card chat-input-card">
         <textarea id="prompt" rows="4" placeholder="Your prompt…" autocomplete="off" autofocus></textarea>
         <div class="btn-send-row">
@@ -437,8 +426,6 @@ details[open] summary::after { transform: rotate(90deg); }
           <button class="btn btn-web" onclick="sendWeb()">🌐 Search the Web</button>
         </div>
       </div>
-
-      <!-- Chat history -->
       <div id="chathistory"></div>
 
     </div>
@@ -446,7 +433,6 @@ details[open] summary::after { transform: rotate(90deg); }
 
 </div>
 
-<!-- MODAL (id/class preserved for JS) -->
 <div id="chatModal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
@@ -456,22 +442,20 @@ details[open] summary::after { transform: rotate(90deg); }
   </div>
 </div>
 
-<script>
-// ============================================================
-//  VivacityGPT Master Chatbot — JavaScript completo
-//  Aggiornato: analisi file via OpenAI /v1/files endpoint
-//  File_id mantenuto per follow-up conversazionali completi.
-// ============================================================
+<div id="apiKeyModal" class="modal">
+  <div class="modal-content">
+    <span class="close" id="apiKeyClose">&times;</span>
+    <h2>OpenAI API Key</h2>
+    <small>La chiave viene salvata in localStorage con chiave <code>openaikey</code></small>
+    <div style="margin-top:14px;">
+      <input type="text" id="apiKeyInput" placeholder="Inserisci la tua API key…">
+      <button class="btn btn-sm" id="saveApiKeyBtn" style="margin-top:8px;">💾 Salva</button>
+      <div id="apiKeyFeedback"></div>
+    </div>
+  </div>
+</div>
 
-function myFunction() {
-  var x = document.getElementById("myTopnav");
-  if (x.className === "topnav") {
-    x.className += " responsive";
-  } else {
-    x.className = "topnav";
-  }
-}
-        
+<script>
 const localization = 'Pomezia (RM), Italy';
 var time = new Date();
 var hour = time.getHours();
@@ -745,8 +729,6 @@ Show VivacityGPT's response → Append all exchanges to chatMemory"
 }
 }
 `        
-
-// ─── Chat Search ──────────────────────────────────────────────
 const searchButton = document.getElementById("search-button");
 searchButton.addEventListener("click", searchChat);
 
@@ -767,8 +749,6 @@ function searchChat() {
   });
   searchInput.value = "";
 }
-
-// ─── Save Chat ────────────────────────────────────────────────
 var saveButtont = document.getElementById("savetxt");
 saveButtont.addEventListener("click", handleSaveButtontClick);
 
@@ -791,11 +771,7 @@ function saveChatContentTxt() {
   downloadLink.click();
   URL.revokeObjectURL(url);
 }
-
-// ─── Chat Memory ──────────────────────────────────────────────
 let chatMemory = [];
-
-// Document Analyzer state — file_id mantenuto per follow-up completi
 let currentFileId = null;
 let currentFilename = null;
 
@@ -807,8 +783,6 @@ function createMemory(messages) {
   return memory;
 }
         
-// ─── Long-Term Semantic Memory ────────────────────────────────
-
 function cosineSimilarity(a, b) {
   const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
   const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
@@ -859,11 +833,9 @@ async function searchLongMemory(query, topK = 3) {
 async function initSelfAwareness() {
   const memoria = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
   
-  // Controlla se è già stata salvata
   const giaSalvata = memoria.some(item => item.testo.includes("VivacityGPT_Master_Chatbot"));
   if (giaSalvata) return;
   
-  // Salvala come ricordo permanente
   await saveToLongMemory(
     "Chi sei e come sei fatto?",
     selfAwareness
@@ -871,7 +843,6 @@ async function initSelfAwareness() {
   console.log("Self-awareness salvata in long memory.");
 }
 
-// ─── Spinner ──────────────────────────────────────────────────
 function showSpinner(message = "Processing...") {
   let spinner = document.getElementById("spinner");
   if (!spinner) {
@@ -906,7 +877,6 @@ function hideSpinner() {
   if (spinner) spinner.style.display = "none";
 }
 
-// ─── Send Message (normal chat) ───────────────────────────────
 async function sendMessage() {
   const apikey = localStorage.getItem("openaikey");
   document.getElementById("apikey").value = apikey;
@@ -920,7 +890,6 @@ async function sendMessage() {
   }
 }
 
-// ─── Send Web Search ─────────────────────────────────────────
 async function sendWeb() {
   const apikey = localStorage.getItem("openaikey");
   document.getElementById("apikey").value = apikey;
@@ -934,7 +903,6 @@ async function sendWeb() {
   }
 }
 
-// ─── Copy / TTS buttons ───────────────────────────────────────
 function handleCopyButtonClick(event) {
   event.preventDefault();
   const text = this.dataset.message;
@@ -953,7 +921,6 @@ function handleTransferButtonClick(event) {
   window.location.href = "https://www.vivacitydesign.net/vdgptscomplete/tts.html";
 }
 
-// ─── showMessage ──────────────────────────────────────────────
 function showMessage(sender, message, tokens) {
   const chatContainer = document.getElementById("chathistory");
   const typingIndicator = document.getElementById("typing-indicator");
@@ -994,16 +961,12 @@ function showMessage(sender, message, tokens) {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// ─── getChatGPTResponse (normal chat) ────────────────────────
 async function getChatGPTResponse(userInput, chatMemory = []) {
   const apikey = localStorage.getItem("openaikey");
   document.getElementById("apikey").value = apikey;
   if (apikey === "") { alert("No OpenAI API Key found."); return; }
   showSpinner("Generating response...");
-// cerca memoria rilevante prima di chiamare OpenAI
 const contestoMemoria = await searchLongMemory(userInput);
-  // Se c'è un documento attivo, allegalo come file ad ogni follow-up
-  // così GPT può vedere il contenuto completo, non solo il summary
   if (contestoMemoria && chatMemory.length > 0) {
     chatMemory[0].content = chatMemory[0].content + "\n\n" + contestoMemoria;
           console.log(contestoMemoria);
@@ -1067,7 +1030,6 @@ return chatMemory;
   }
 }
 
-// ─── getChatGPTResponseWeb (web search) ───────────────────────
 async function getChatGPTResponseWeb(userInput, chatMemory = []) {
   const apikey = localStorage.getItem("openaikey");
   document.getElementById("apikey").value = apikey;
@@ -1078,7 +1040,6 @@ async function getChatGPTResponseWeb(userInput, chatMemory = []) {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + apikey },
       body: JSON.stringify({
-        //model: "gpt-4o-mini-search-preview",
               model: "gpt-5-search-api",
         web_search_options: { search_context_size: "medium" },
         messages: [...chatMemory, { role: "user", content: userInput }]
@@ -1215,16 +1176,6 @@ function showMessageWeb(sender, message, citationLinks = [], tokens = "") {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  DOCUMENT ANALYZER — Nuovo flusso via OpenAI /v1/files
-//  Sostituisce: upload.php + fetch(fileURL) + aPDF API
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Carica il file su OpenAI Files endpoint e restituisce l'oggetto file.
- * Supporta .txt, .pdf e tutti gli altri tipi accettati dal form.
- * Limite: 20 MB (limite pratico OpenAI per /v1/files).
- */
 async function uploadToOpenAI(file) {
   const apikey = localStorage.getItem("openaikey");
   if (!apikey) {
@@ -1251,7 +1202,7 @@ async function uploadToOpenAI(file) {
     }
     const data = await response.json();
     console.log("OpenAI file upload OK:", data);
-    return data; // { id, object:"file", filename, purpose, ... }
+    return data;
   } catch (err) {
     console.error("Upload error:", err);
     alert("Error during upload: " + err.message);
@@ -1261,9 +1212,6 @@ async function uploadToOpenAI(file) {
   }
 }
 
-/**
- * Elimina il file da OpenAI dopo l'analisi per non accumulare storage.
- */
 async function deleteOpenAIFile(fileId) {
   const apikey = localStorage.getItem("openaikey");
   try {
@@ -1277,11 +1225,6 @@ async function deleteOpenAIFile(fileId) {
   }
 }
 
-/**
- * Punto d'ingresso principale per il Document Analyzer.
- * Viene chiamato dal pulsante "Analyze the file" nel form.
- * Gestisce sia file di testo che PDF in modo unificato via file_id.
- */
 async function analyzeFile() {
   const fileInput = document.getElementById("file-input");
   const feedbackEl = document.getElementById("feedback");
@@ -1295,7 +1238,6 @@ async function analyzeFile() {
   const filename = file.name;
   const mimeType = file.type;
 
-  // MIME types supportati da OpenAI via file_id
   const openAISupportedTypes = [
     "application/pdf",
     "image/jpeg", "image/png", "image/gif", "image/webp"
@@ -1313,7 +1255,6 @@ async function analyzeFile() {
   const isOpenAISupported = openAISupportedTypes.includes(mimeType);
 
   if (isOpenAISupported) {
-    // PDF/immagini → upload normale con file_id
     const uploaded = await uploadToOpenAI(file);
     if (!uploaded) { feedbackEl.innerHTML = "Upload failed."; return; }
     currentFileId = uploaded.id;
@@ -1322,7 +1263,6 @@ async function analyzeFile() {
     await analyzeOpenAIFile(currentFileId, filename);
 
   } else {
-    // File di testo (CSS, JSON, RTF, JS, ecc.) → leggi come testo
     feedbackEl.innerHTML = `Reading <strong>${filename}</strong>...`;
     const textContent = await readFileAsText(file);
     if (!textContent) { feedbackEl.innerHTML = "Could not read file."; return; }
@@ -1337,7 +1277,6 @@ async function analyzeFile() {
   `;
 }
 
-// Legge un file come testo nel browser
 function readFileAsText(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1347,14 +1286,12 @@ function readFileAsText(file) {
   });
 }
 
-// Analizza file di testo passando il contenuto direttamente nel prompt
 async function analyzeTextFile(textContent, filename) {
   const apikey = localStorage.getItem("openaikey");
   if (!apikey) { alert("No OpenAI API Key found."); return; }
 
   showSpinner("Analyzing " + filename + "...");
 
-  // Tronca se troppo lungo (max ~60.000 caratteri per sicurezza)
   const maxChars = 60000;
   const truncated = textContent.length > maxChars;
   const safeContent = truncated ? textContent.substring(0, maxChars) + "\n\n[...content truncated...]" : textContent;
@@ -1413,7 +1350,6 @@ async function analyzeTextFile(textContent, filename) {
       tokenCount.innerHTML
     );
 
-    // Salva in memoria il contenuto per i follow-up
     chatMemory.push({ role: "user", content: `[Document uploaded: "${filename}". Content:\n\`\`\`\n${safeContent}\n\`\`\`]` });
     chatMemory.push({ role: "assistant", content: cleanResponse });
 
@@ -1424,10 +1360,7 @@ async function analyzeTextFile(textContent, filename) {
     hideSpinner();
   }
 }
-/**
- * Chiude il documento attivo: elimina il file da OpenAI e resetta la sessione.
- * Da chiamare quando l'utente ha finito con il documento.
- */
+
 async function closeDocument() {
   if (currentFileId) {
     await deleteOpenAIFile(currentFileId);
@@ -1441,11 +1374,6 @@ async function closeDocument() {
   console.log("Document closed and OpenAI file deleted.");
 }
 
-/**
- * Interroga il modello passando il file_id come input_file nella message content.
- * Usa gpt-4.1-mini che supporta input_file_id nelle chat completions.
- * Dopo la risposta aggiorna chatMemory per consentire follow-up.
- */
 async function analyzeOpenAIFile(fileId, filename) {
   const apikey = localStorage.getItem("openaikey");
   if (!apikey) { alert("No OpenAI API Key found."); return; }
@@ -1489,7 +1417,6 @@ async function analyzeOpenAIFile(fileId, filename) {
 
     const data = await response.json();
 
-    // Gestione risposta (può essere array di content blocks o stringa)
     let rawResponse = "";
     const choice = data.choices?.[0]?.message?.content;
     if (Array.isArray(choice)) {
@@ -1500,14 +1427,12 @@ async function analyzeOpenAIFile(fileId, filename) {
       throw new Error("Invalid API response");
     }
 
-    // Pulizia markdown standard
     const cleanResponse = rawResponse
       .replace(/(```html|```css|```javascript|```json|```js|```php|```python|```vb|```vbnet|```cpp|```java|```csharp)(.*?)/gs, "$2")
       .replace(/```/g, "")
       .replace(/\*\*(.*?)\*\*/g, "$1")
       .replace(/^#{1,6}\s*(.+)$/gm, "$1");
 
-    // Token e costi (gpt-4.1-mini: input $0.40/Mt, output $1.60/Mt)
     const tokenCount = document.createElement("p");
     if (data.usage && data.usage.completion_tokens) {
       const requestTokens = data.usage.prompt_tokens;
@@ -1529,9 +1454,6 @@ async function analyzeOpenAIFile(fileId, filename) {
       tokenCount.innerHTML
     );
 
-    // Aggiorna chatMemory con un riferimento compatto al documento.
-    // Nei follow-up, getChatGPTResponse riallegherà il file_id originale
-    // così GPT vede sempre il contenuto completo, non solo il summary.
     chatMemory.push({ role: "user", content: `[Document uploaded: "${filename}". Please answer questions about it.]` });
     chatMemory.push({ role: "assistant", content: cleanResponse });
 
@@ -1543,7 +1465,6 @@ async function analyzeOpenAIFile(fileId, filename) {
   }
 }
 
-// ─── VISION (Image Analyzer) — invariata ───────── RIMETTERE L'URL FINALE DI DOMINIO
 async function submitImage(imgUrl) {
   return await getChatGPTResponseIMG("https://testsite.vivacitydesign.net/TESTVARI/vd-ai-os/os-website-04/" + imgUrl, chatMemory);
 }
@@ -1643,9 +1564,7 @@ async function getChatGPTResponseIMG(fileUrl, chatMemory) {
     hideSpinner();
   }
 }
-// END VISION
 
-// ─── Personality selector ─────────────────────────────────────
 function updateStructure() {
   var selectElement = document.getElementById("selectOption");
   var selectedValue = selectElement.value;
@@ -1732,6 +1651,40 @@ window.onclick = function (event) {
   if (event.target === modal) { closeModal(); }
 };
 
+function openApiKeyModal() {
+  const modal = document.getElementById("apiKeyModal");
+  const input = document.getElementById("apiKeyInput");
+  const feedback = document.getElementById("apiKeyFeedback");
+  input.value = localStorage.getItem("openaikey") || "";
+  feedback.innerHTML = "";
+  modal.style.display = "block";
+}
+
+function closeApiKeyModal() {
+  const modal = document.getElementById("apiKeyModal");
+  modal.style.display = "none";
+}
+
+function saveApiKey() {
+  const input = document.getElementById("apiKeyInput");
+  const feedback = document.getElementById("apiKeyFeedback");
+  const key = input.value.trim();
+  if (key) {
+    localStorage.setItem("openaikey", key);
+    feedback.innerHTML = '<div class="success-message">✅ Chiave salvata!</div>';
+    setTimeout(closeApiKeyModal, 1000);
+  } else {
+    feedback.innerHTML = '<div class="error-message">⚠️ Inserisci una chiave valida</div>';
+  }
+}
+
+document.getElementById("apikeyBtn").onclick = openApiKeyModal;
+document.getElementById("apiKeyClose").onclick = closeApiKeyModal;
+document.getElementById("saveApiKeyBtn").onclick = saveApiKey;
+document.getElementById("apiKeyModal").onclick = function(event) {
+  if (event.target === this) closeApiKeyModal();
+};
+
 function clearLongMemory() {
   if (confirm("Cancellare tutta la memoria a lungo termine?")) {
     localStorage.removeItem("vivacityLongMemory");
@@ -1746,38 +1699,21 @@ function pruneOldMemories(maxItems = 200, maxDaysOld = 90) {
   
   let pruned = memoria.filter(item => new Date(item.data) > cutoff);
   if (pruned.length > maxItems) {
-    pruned = pruned.slice(pruned.length - maxItems); // tieni i più recenti
+    pruned = pruned.slice(pruned.length - maxItems);
   }
   localStorage.setItem("vivacityLongMemory", JSON.stringify(pruned));
-}        
+}
 
-// mostra quanti ricordi ci sono all'avvio
 document.addEventListener("DOMContentLoaded", function () {
   updateStructure();
-  pruneOldMemories(); 
-initSelfAwareness();        
+  pruneOldMemories();        
+  initSelfAwareness();        
   const mem = JSON.parse(localStorage.getItem("vivacityLongMemory") || "[]");
   document.getElementById("memoryStatus").innerText = `Long memory: ${mem.length} ricordi salvati`;
 });
-        
-
-        
-        
-
-// ─── jQuery: Image upload (invariata, upload.php rimosso) ─────
-// NOTA: il blocco jQuery per #uploadBtn è stato rimosso perché
-// non più necessario. Il Document Analyzer ora chiama analyzeFile()
-// direttamente senza passare per upload.php.
-// Il blocco jQuery per #vuploadBtn (image upload) è conservato
-// nel tag <script> inline nella pagina HTML dove usa vupload.php,
-// poiché la Vision rimane sul vecchio flusso server-side.
-        
 </script>
         
-    <script src="https://code.responsivevoice.org/responsivevoice.js?key=yZtZhFyg">
-        var selectedText = window.getSelection().toString();
-            responsiveVoice.speak(selectedText, "Italian Female", {rate: 1.5});
-        </script>  
+<script src="https://code.responsivevoice.org/responsivevoice.js?key=yZtZhFyg"></script>  
 
 </body>
 </html>
